@@ -48,6 +48,17 @@ Les stages absents de macarte (ceux de 2025-2026, par exemple) sont saisis à la
 Ce classement automatique peut se tromper. Pour corriger une structure, ajoutez son nom exact dans `data/structures-corrections.json` avec `labo`, `entreprise` ou `public`, puis relancez le script.
 
 Le vocabulaire des tags vit dans `scripts/tags.mjs`. Après l'avoir modifié, `node scripts/retag.mjs` recalcule les tags de `data/stages.json` sans retélécharger la source.
+
+## Publier une modification du site
+
+Avant chaque commit qui modifie `assets/style.css`, `assets/basemap.js` ou `assets/app.js`, lancer :
+
+```sh
+node scripts/version.mjs
+```
+
+Le script ajoute à ces fichiers, dans `index.html`, une empreinte de leur contenu (`assets/app.js?v=ec151dcf`, par exemple). Quand un fichier change, son adresse change aussi, et les navigateurs chargent la nouvelle version au lieu de garder l'ancienne en cache. Les données, elles, sont revérifiées auprès du serveur à chaque visite : il n'y a rien à faire après une mise à jour de `data/stages.json`.
+
 ## Fichiers
 
 - `index.html`, `assets/style.css`, `assets/app.js` : le site (Leaflet, Leaflet.markercluster et MapLibre, chargés depuis jsDelivr).
@@ -60,3 +71,4 @@ Le vocabulaire des tags vit dans `scripts/tags.mjs`. Après l'avoir modifié, `n
 - `scripts/build-data.mjs` : récupération et nettoyage des données.
 - `scripts/tags.mjs` : le vocabulaire des tags des stages (motifs cherchés dans le sujet).
 - `scripts/retag.mjs` : recalcule les tags sans retélécharger la source.
+- `scripts/version.mjs` : met à jour l'empreinte des fichiers du site dans `index.html`.

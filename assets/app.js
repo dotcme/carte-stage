@@ -1171,7 +1171,8 @@
   setSheet('peek');
   map.fitBounds(EUROPE, mapPadding());
 
-  fetch('data/stages.json')
+  // Revalidé auprès du serveur à chaque visite : les stages ajoutés s'affichent sans attendre l'expiration du cache.
+  fetch('data/stages.json', { cache: 'no-cache' })
     .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then((data) => {
       STAGES = data.stages;
