@@ -669,15 +669,13 @@ a { color: var(--accent); }
   /* Outils : en haut à droite, sous la recherche ; pas de zoom sur écran tactile (pincer suffit) */
   .tools {
     top: calc(env(safe-area-inset-top) + var(--inset) + 52px + 12px); bottom: auto;
-    transform-origin: top right;
-    /* Retour un peu décalé : la feuille qui descend libère d'abord la place. */
-    transition: opacity 280ms var(--ease-out) 80ms, transform 280ms var(--ease-out) 80ms, visibility 0s 80ms;
+    transition: opacity 420ms var(--ease-out), visibility 0s;
   }
   .layers-menu { top: calc(env(safe-area-inset-top) + var(--inset) + 52px + 12px); bottom: auto; transform-origin: top right; }
-  /* Sous la feuille pleine ou les filtres, les outils s'effacent en fondu au lieu de disparaître d'un coup. */
+  /* Sous la feuille pleine ou les filtres, les outils s'effacent en fondu, au rythme de la feuille. */
   body[data-sheet="full"] .tools, body.filters-open .tools {
-    opacity: 0; transform: scale(0.85); visibility: hidden; pointer-events: none;
-    transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s 200ms;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 420ms var(--ease-out), visibility 0s 420ms;
   }
   body[data-sheet="full"] .layers-menu, body.filters-open .layers-menu { display: none; }
   .leaflet-bottom { bottom: calc(env(safe-area-inset-bottom) + var(--sheet-peek) + 12px); transition: bottom 420ms var(--ease-out); }
