@@ -55,6 +55,81 @@
   const plural = (n, one, many) => fmt(n) + '\u00a0' + (n > 1 ? many : one);
   const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
+  /* ---------- Compteurs à rouleaux ---------- */
+  // Chaque chiffre est un rouleau (0-9 répété 5 fois) qui tourne comme sur un compteur mécanique :
+  // vers le haut quand le nombre monte, vers le bas quand il baisse, et d'autant plus de crans que le chiffre est à droite.
+  const REEL_REST = 20; // position de repos : la 3e série de 0-9, pour pouvoir tourner jusqu'à 19 crans dans les deux sens
+  const REEL_DIGITS = Array.from({ length: 50 }, (_, i) => `<span>${i % 10}</span>`).join('');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  function setReel(strip, idx, ms, delay) {
+    strip.style.transition = ms ? `transform ${ms}ms cubic-bezier(0.25, 1.15, 0.4, 1) ${delay}ms` : 'none';
+    strip.style.transform = `translateY(${-idx * 2}%)`; // 50 chiffres : 2 % de la bande par cran
+    strip.dataset.idx = idx;
+  }
+  function makeRoll() {
+    const el = document.createElement('span');
+    el.className = 'roll';
+    el.innerHTML = '<span class="sr-only"></span><span class="roll-digits" aria-hidden="true"></span>';
+    return el;
+  }
+  function roll(el, n) {
+    const from = el._n || 0;
+    if (el._n === n) return;
+    el._n = n;
+    const text = fmt(n);
+    el.firstElementChild.textContent = text;
+    const box = el.lastElementChild;
+    const old = $$('.reel', box).reverse(); // de droite à gauche : les unités d'abord
+    let pos = text.replace(/\D/g, '').length;
+    const nodes = Array.from(text).map((c) => {
+      if (!/\d/.test(c)) {
+        const sep = document.createElement('span');
+        sep.textContent = c;
+        return sep;
+      }
+      pos -= 1;
+      let reel = old[pos];
+      if (!reel) {
+        reel = document.createElement('span');
+        reel.className = 'reel';
+        reel.innerHTML = `<span class="reel-strip">${REEL_DIGITS}</span>`;
+        const strip = reel.firstChild;
+        setReel(strip, REEL_REST, 0, 0);
+        strip.addEventListener('transitionend', () => setReel(strip, REEL_REST + (+strip.dataset.idx % 10), 0, 0));
+      }
+      reel._pos = pos;
+      return reel;
+    });
+    box.replaceChildren(...nodes);
+    const reels = nodes.filter((r) => r.className === 'reel');
+    // Chaque rouleau repart du chiffre de l'ancien nombre, sans transition…
+    reels.forEach((r) => setReel(r.firstChild, REEL_REST + Math.floor(from / 10 ** r._pos) % 10, 0, 0));
+    if (reducedMotion.matches) {
+      reels.forEach((r) => setReel(r.firstChild, REEL_REST + Math.floor(n / 10 ** r._pos) % 10, 0, 0));
+      return;
+    }
+    void box.offsetWidth;
+    // … puis tourne d'autant de crans qu'un vrai compteur, plafonnés à 19 en gardant le bon chiffre d'arrivée.
+    reels.forEach((r) => {
+      const p = 10 ** r._pos;
+      const raw = Math.floor(n / p) - Math.floor(from / p);
+      if (!raw) return;
+      const steps = Math.abs(raw) > 19 ? Math.sign(raw) * (10 + Math.abs(raw) % 10) : raw;
+      const strip = r.firstChild;
+      setReel(strip, +strip.dataset.idx + steps, 420 + 40 * Math.abs(steps), 50 * r._pos);
+    });
+  }
+  // Remplit el avec « [avant]1 234 stages », le nombre en rouleaux, en gardant les rouleaux d'un appel à l'autre.
+  function rollCount(el, n, one, many, before) {
+    if (!el._roll || !el.contains(el._roll)) {
+      el._roll = el._roll || makeRoll();
+      el.replaceChildren(before || '', el._roll, ...(one ? [' ', document.createElement('span')] : []));
+    }
+    roll(el._roll, n);
+    if (one) el.lastElementChild.textContent = n > 1 ? many : one;
+  }
+
   let STAGES = [];
   let YEARS = [];
   let PARCOURS = [];
@@ -433,12 +508,18 @@
     const abroad = visible.filter((s) => !isFrance(s)).length;
     const countries = new Set(visible.map((s) => s.pays)).size;
 
-    $$('[data-count]').forEach((el) => { el.textContent = plural(visible.length, 'stage', 'stages'); });
+    $$('[data-count]').forEach((el) => rollCount(el, visible.length, 'stage', 'stages'));
     // L'année est déjà dans les filtres rapides de la feuille : le résumé donne les pays.
     $('[data-summary]').textContent = `${plural(countries, 'pays', 'pays')} · ${fmt(abroad)} à l’étranger`;
-    $('[data-apply]').textContent = `Afficher ${plural(visible.length, 'stage', 'stages')}`;
-    const stat = (n, one, many) => `<div class="stat"><dt>${n > 1 ? many : one}</dt><dd>${fmt(n)}</dd></div>`;
-    $('[data-stats]').innerHTML = stat(visible.length, 'stage', 'stages') + stat(countries, 'pays', 'pays') + stat(abroad, 'à l’étranger', 'à l’étranger');
+    rollCount($('[data-apply]'), visible.length, 'stage', 'stages', 'Afficher ');
+    // Les chiffres clés gardent leurs éléments pour que les rouleaux tournent d'une valeur à l'autre.
+    const stats = $('[data-stats]');
+    if (!stats.children.length) stats.innerHTML = '<div class="stat"><dt></dt><dd></dd></div>'.repeat(3);
+    [[visible.length, 'stage', 'stages'], [countries, 'pays', 'pays'], [abroad, 'à l’étranger', 'à l’étranger']].forEach(([n, one, many], i) => {
+      const stat = stats.children[i];
+      stat.firstElementChild.textContent = n > 1 ? many : one;
+      rollCount(stat.lastElementChild, n);
+    });
 
     if (state.sel !== null && !visible.some((s) => s.id === state.sel)) setSelection(null, { silent: true });
 
@@ -496,7 +577,9 @@
   /* ---------- Panneau de la liste des stages (bureau) ---------- */
   function renderResultsButton() {
     $('[data-action="toggle-results"]').setAttribute('aria-expanded', String(resultsOpen));
-    $('[data-results-label]').textContent = resultsOpen ? 'Fermer la liste' : `Afficher ${plural(visible.length, 'stage', 'stages')}`;
+    const label = $('[data-results-label]');
+    if (resultsOpen) label.textContent = 'Fermer la liste';
+    else rollCount(label, visible.length, 'stage', 'stages', 'Afficher ');
   }
   function setResults(open) {
     resultsOpen = open;

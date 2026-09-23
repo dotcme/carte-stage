@@ -240,6 +240,16 @@ a { color: var(--accent); }
 }
 .stat dt { font-size: 0.75rem; line-height: 1rem; color: var(--label-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
+/* Compteurs à rouleaux : chaque chiffre est une bande 0-9 qui défile dans une fenêtre d'une ligne */
+.roll { display: inline-flex; vertical-align: top; height: 1.2em; height: 1lh; overflow: hidden; font-variant-numeric: tabular-nums; }
+.roll-digits { display: inline-flex; user-select: none; -webkit-user-select: none; }
+.reel {
+  display: inline-block; height: 1.2em; height: 1lh; overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(transparent, #000 12%, #000 88%, transparent);
+}
+.reel-strip { display: flex; flex-direction: column; will-change: transform; }
+
 .search { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--label-secondary); }
 .search input {
   flex: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent;
