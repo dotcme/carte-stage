@@ -12,8 +12,20 @@
     entreprise: { label: 'Entreprise', long: 'Entreprise' },
     public: { label: 'Service public', long: 'Service public ou collectivité' }
   };
-  const PLACES = { all: 'Partout', fr: 'France', abroad: 'Étranger' };
   const TYPES = { Pluri: 'Stage pluridisciplinaire', TFE: 'Travail de fin d’études' };
+  // Tags des stages (générés par scripts/tags.mjs) : 10 techniques et 9 domaines d’application.
+  const TAGS = {
+    techniques: {
+      geodesie: 'Géodésie', cartographie: 'Cartographie', teledetection: 'Télédétection', sig: 'SIG',
+      photogrammetrie: 'Photogrammétrie', lasergrammetrie: 'Lasergrammétrie', topometrie: 'Topométrie',
+      dev: 'Développement', modelisation3d: 'Modélisation 3D', ia: 'IA'
+    },
+    domaines: {
+      eau: 'Eau', environnement: 'Environnement', urbanisme: 'Urbanisme', agriculture: 'Agriculture',
+      littoral: 'Littoral', mobilite: 'Mobilité', patrimoine: 'Patrimoine', risques: 'Risques', energie: 'Énergie'
+    }
+  };
+  const TAG_KEYS = Object.keys(TAGS.techniques).concat(Object.keys(TAGS.domaines));
   const FRANCE = ['France', 'Guyane', 'La Réunion', 'Guadeloupe', 'Martinique', 'Nouvelle-Calédonie', 'Polynésie française'];
   const EUROPE = [[36, -11], [60, 30]];
   const DESKTOP = window.matchMedia('(min-width: 900px)');
@@ -33,11 +45,17 @@
   let STAGES = [];
   let YEARS = [];
   let PARCOURS = [];
+  let COUNTRIES = [];
+  let countryCounts = {}; // comptes par pays, pour le menu du filtre Lieu
+  let parcoursOpen = false; // parcours de 3e année dépliés sous la ligne ing3 (état d'affichage seul)
+  let resultsOpen = false; // panneau de la liste des stages, ouvert (bureau)
   const byId = new Map();
   const markers = new Map();
 
-  const DEFAULTS = { annee: 'all', cycles: Object.keys(CYCLES), structures: Object.keys(STRUCTURES), lieu: 'all', parcours: 'all', q: '' };
-  const state = { annee: 'all', cycles: new Set(DEFAULTS.cycles), structures: new Set(DEFAULTS.structures), lieu: 'all', parcours: 'all', q: '', sel: null };
+  const DEFAULTS = { annee: 'all', cycles: Object.keys(CYCLES), structures: Object.keys(STRUCTURES), lieu: 'all', q: '' };
+  // Parcours : tous cochés (en décocher un l'exclut) ; tags : aucun coché (en cocher un inclut, OU entre eux).
+  // Le filtre Lieu : « all » (partout), « abroad » (tous les pays sauf la France) ou un pays.
+  const state = { annee: 'all', cycles: new Set(DEFAULTS.cycles), structures: new Set(DEFAULTS.structures), lieu: 'all', parcours: new Set(), tags: new Set(), q: '', sel: null };
 
   /* ---------- Carte ---------- */
   const map = L.map('map', { zoomControl: false, minZoom: 2, maxZoom: 19, worldCopyJump: true });
@@ -122,7 +140,9 @@
   map.addLayer(clusters);
 
   function mapPadding() {
-    if (DESKTOP.matches) return { paddingTopLeft: [16 * 2 + 392 + 24, 96], paddingBottomRight: [80, 32] };
+    // Bureau : le panneau des résultats ouvert réduit d'autant la partie utile de la carte.
+    const gauche = 16 * 2 + 392 + 24 + (resultsOpen ? 392 + 16 : 0);
+    if (DESKTOP.matches) return { paddingTopLeft: [gauche, 32], paddingBottomRight: [80, 32] };
     // Hauteur visée par la feuille (la transition CSS peut être en cours) : voir style.css.
     const h = window.innerHeight;
     const sheet = { peek: 196, detail: Math.min(520, h - 200), full: h - 150 }[document.body.dataset.sheet] || 196;
@@ -130,14 +150,19 @@
   }
 
   /* ---------- Filtres ---------- */
-  function isFrance(s) { return FRANCE.includes(s.pays); }
+  function inFrance(pays) { return FRANCE.includes(pays); }
+  function isFrance(s) { return inFrance(s.pays); }
   function matches(s, skip) {
+    const sk = skip || '';
     if (state.annee !== 'all' && s.annee !== state.annee) return false;
-    if (skip !== 'cycle' && !state.cycles.has(s.cycle)) return false;
-    if (skip !== 'structure' && !state.structures.has(s.structure)) return false;
-    if (state.lieu === 'fr' && !isFrance(s)) return false;
-    if (state.lieu === 'abroad' && isFrance(s)) return false;
-    if (state.parcours !== 'all' && s.parcours !== state.parcours) return false;
+    if (!sk.includes('cycle') && !state.cycles.has(s.cycle)) return false;
+    if (!sk.includes('structure') && !state.structures.has(s.structure)) return false;
+    if (!sk.includes('lieu') && state.lieu !== 'all') {
+      if (state.lieu === 'abroad') { if (isFrance(s)) return false; }
+      else if (s.pays !== state.lieu) return false;
+    }
+    if (!sk.includes('parcours') && s.parcours && !state.parcours.has(s.parcours)) return false;
+    if (!sk.includes('tags') && state.tags.size && !s.tags.some((t) => state.tags.has(t))) return false;
     if (state.q) {
       const words = norm(state.q).split(/\s+/).filter(Boolean);
       if (!words.every((w) => s._text.includes(w))) return false;
@@ -149,7 +174,8 @@
     if (state.cycles.size !== DEFAULTS.cycles.length) n++;
     if (state.structures.size !== DEFAULTS.structures.length) n++;
     if (state.lieu !== 'all') n++;
-    if (state.parcours !== 'all') n++;
+    if (state.parcours.size !== PARCOURS.length) n++;
+    if (state.tags.size) n++;
     return n;
   }
   function isDefault() { return !changedCount() && state.annee === 'all' && !state.q; }
@@ -157,34 +183,70 @@
   /* ---------- Rendu des contrôles ---------- */
   const MENUS = {
     annee: { name: 'Année', options: () => YEARS, label: (v) => (v === 'all' ? 'Toutes les années' : v) },
-    parcours: { name: 'Parcours', options: () => PARCOURS, label: (v) => (v === 'all' ? 'Tous' : v) },
+    lieu: {
+      // « null » trace un séparateur dans le menu : l'option « sauf la France » à part, puis les pays.
+      name: 'Lieu', options: () => ['abroad', null, ...COUNTRIES],
+      label: (v) => (v === 'all' ? 'Partout' : v === 'abroad' ? 'Tous les pays sauf la France' : v),
+      count: (v) => countryCounts[v] || 0
+    }
   };
   function renderMenu(key) {
     const m = MENUS[key];
     const item = (v) => `
       <button type="button" class="menu-item" role="option" data-option="${esc(v)}" aria-selected="${state[key] === v}" tabindex="-1">
-        ${CHECK}${esc(m.label(v))}
+        ${CHECK}${esc(m.label(v))}${m.count && v !== 'all' ? `<span class="menu-count">${fmt(m.count(v))}</span>` : ''}
       </button>`;
     const menu = $('[data-options-menu]');
+    const sep = '<div class="menu-sep" role="separator"></div>';
     menu.setAttribute('aria-label', m.name);
-    menu.innerHTML = item('all') + '<div class="menu-sep" role="separator"></div>' + m.options().map(item).join('');
+    menu.innerHTML = item('all') + sep + m.options().map((v) => (v === null ? sep : item(v))).join('');
   }
 
   function renderControls() {
     const cycleCounts = {};
     const structCounts = {};
+    const parcoursCounts = {};
+    const tagCounts = {};
+    countryCounts = {};
     STAGES.forEach((s) => {
       if (matches(s, 'cycle')) cycleCounts[s.cycle] = (cycleCounts[s.cycle] || 0) + 1;
       if (matches(s, 'structure')) structCounts[s.structure] = (structCounts[s.structure] || 0) + 1;
+      if (s.parcours && matches(s, 'cycle+parcours')) parcoursCounts[s.parcours] = (parcoursCounts[s.parcours] || 0) + 1;
+      // Les comptes du menu Lieu ignorent le filtre de lieu : c'est ce qu'on obtiendra en le choisissant.
+      if (matches(s, 'lieu')) {
+        countryCounts[s.pays] = (countryCounts[s.pays] || 0) + 1;
+        if (!isFrance(s)) countryCounts.abroad = (countryCounts.abroad || 0) + 1;
+      }
+      if (matches(s, 'tags')) s.tags.forEach((t) => { tagCounts[t] = (tagCounts[t] || 0) + 1; });
     });
 
-    const cycleRows = Object.keys(CYCLES).map((k) => `
+    // Ingénieur 3e année : la ligne devient un groupe avec, à droite, le bouton qui déplie
+    // les parcours ; cochés, ils s'affichent indentés sous la ligne.
+    const cycleRow = (k) => k !== 'ing3' ? `
       <button type="button" class="row" data-cycle="${k}" aria-pressed="${state.cycles.has(k)}">
         ${pinSvg('pin-glyph pin--' + k)}
         <span class="row-label">${CYCLES[k].label}</span>
         <span class="row-count">${fmt(cycleCounts[k] || 0)}</span>
         ${CHECK}
-      </button>`).join('');
+      </button>` : `
+      <div class="row row-disclose">
+        <button type="button" class="row-main" data-cycle="ing3" aria-pressed="${state.cycles.has('ing3')}">
+          ${pinSvg('pin-glyph pin--' + k)}
+          <span class="row-label">${CYCLES[k].label}</span>
+          <span class="row-count">${fmt(cycleCounts[k] || 0)}</span>
+          ${CHECK}
+        </button>
+        <button type="button" class="disclose" data-toggle-parcours aria-expanded="${parcoursOpen}" aria-label="Parcours de 3e année">
+          <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5l6 5.5-6 5.5"/></svg>
+        </button>
+      </div>
+      ${parcoursOpen ? `<div class="subrows" role="group" aria-label="Parcours">${PARCOURS.map((p) => `
+        <button type="button" class="row row-sub" data-parcours="${esc(p)}" aria-pressed="${state.parcours.has(p)}">
+          <span class="row-label">${esc(p)}</span>
+          <span class="row-count">${fmt(parcoursCounts[p] || 0)}</span>
+          ${CHECK}
+        </button>`).join('')}</div>` : ''}`;
+    const cycleRows = Object.keys(CYCLES).map(cycleRow).join('');
     $$('[data-cycles]').forEach((el) => { el.innerHTML = cycleRows; });
 
     $$('[data-cycle-chips]').forEach((el) => {
@@ -195,12 +257,6 @@
         </button>`).join('');
     });
 
-    $$('[data-structures]').forEach((el) => {
-      el.innerHTML = Object.keys(STRUCTURES).map((k) => `
-        <button type="button" class="chip" data-structure="${k}" aria-pressed="${state.structures.has(k)}">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${STRUCTURES[k].label}
-        </button>`).join('');
-    });
     $$('[data-structure-rows]').forEach((el) => {
       el.innerHTML = Object.keys(STRUCTURES).map((k) => `
         <button type="button" class="row" data-structure="${k}" aria-pressed="${state.structures.has(k)}">
@@ -210,9 +266,13 @@
         </button>`).join('');
     });
 
-    $$('[data-places]').forEach((el) => {
-      el.innerHTML = Object.keys(PLACES).map((k) => `
-        <button type="button" class="segment" role="radio" data-place="${k}" aria-checked="${state.lieu === k}">${PLACES[k]}</button>`).join('');
+    const tagChip = (t, label) => `
+      <button type="button" class="tag-chip" data-tag="${t}" aria-pressed="${state.tags.has(t)}">
+        <span>${label}</span><span class="tag-count">${fmt(tagCounts[t] || 0)}</span>
+      </button>`;
+    $$('[data-tags]').forEach((el) => {
+      const group = TAGS[el.dataset.tags] || TAGS.techniques;
+      el.innerHTML = Object.keys(group).map((t) => tagChip(t, group[t])).join('');
     });
 
     $$('[data-menu-value]').forEach((el) => { const k = el.dataset.menuValue; el.textContent = MENUS[k].label(state[k]); });
@@ -235,7 +295,7 @@
     const abroad = visible.filter((s) => !isFrance(s)).length;
     const countries = new Set(visible.map((s) => s.pays)).size;
 
-    $('[data-count]').textContent = plural(visible.length, 'stage', 'stages');
+    $$('[data-count]').forEach((el) => { el.textContent = plural(visible.length, 'stage', 'stages'); });
     $('[data-summary]').textContent = `${state.annee === 'all' ? 'Toutes les années' : state.annee} · ${plural(countries, 'pays', 'pays')} · ${fmt(abroad)} à l’étranger`;
     $('[data-apply]').textContent = `Afficher ${plural(visible.length, 'stage', 'stages')}`;
 
@@ -247,31 +307,54 @@
     if (!opts.keepLimit) listLimit = 200;
     renderList();
     renderControls();
+    renderResultsButton();
     writeHash();
   }
 
-  function renderList() {
-    const list = $('[data-list]');
-    if (!visible.length) {
-      list.innerHTML = '<div class="empty"><strong>Aucun stage</strong><span>Élargissez l’année, le cycle ou le lieu pour voir plus de stages.</span></div>';
-      return;
-    }
-    const rows = visible.slice(0, listLimit).map((s) => `
+  function listRow(s) {
+    return `
       <button type="button" class="item" data-id="${esc(s.id)}" aria-current="${s.id === state.sel}">
         <span class="dot" style="background: var(--c-${s.cycle})"></span>
         <span class="item-text">
           <span class="item-title">${esc(s.org || 'Structure non renseignée')}</span>
           <span class="item-sub">${esc(placeOf(s))} · ${CYCLES[s.cycle].short} · ${s.annee}</span>
         </span>
-      </button>`);
-    if (visible.length > listLimit) {
-      rows.push(`<button type="button" class="plain more" data-action="more">Afficher ${plural(Math.min(200, visible.length - listLimit), 'stage de plus', 'stages de plus')}</button>`);
+      </button>`;
+  }
+
+  function renderList() {
+    let html;
+    if (!visible.length) {
+      html = '<div class="empty"><strong>Aucun stage</strong><span>Élargissez l’année, le cycle ou le lieu pour voir plus de stages.</span></div>';
+    } else {
+      const rows = visible.slice(0, listLimit).map(listRow);
+      if (visible.length > listLimit) {
+        rows.push(`<button type="button" class="plain more" data-action="more">Afficher ${plural(Math.min(200, visible.length - listLimit), 'stage de plus', 'stages de plus')}</button>`);
+      }
+      html = rows.join('');
     }
-    list.innerHTML = rows.join('');
+    // Deux contenants partagent la même liste : le panneau adjacent (bureau) et la feuille (mobile).
+    $$('[data-list]').forEach((list) => { list.innerHTML = html; });
+  }
+
+  /* ---------- Panneau de la liste des stages (bureau) ---------- */
+  function renderResultsButton() {
+    $('[data-action="toggle-results"]').setAttribute('aria-expanded', String(resultsOpen));
+    $('[data-results-label]').textContent = resultsOpen ? 'Fermer la liste' : `Afficher ${plural(visible.length, 'stage', 'stages')}`;
+  }
+  function setResults(open) {
+    resultsOpen = open;
+    $('[data-results]').hidden = !open;
+    renderResultsButton();
   }
 
   function placeOf(s) {
     return [s.ville, s.pays === 'France' ? '' : s.pays].filter(Boolean).join(', ') || s.pays || 'Lieu non renseigné';
+  }
+
+  /* ---------- Modes d’affichage ---------- */
+  function showView(name) {
+    $$('[data-view]').forEach((v) => { v.hidden = v.dataset.view !== name; });
   }
 
   /* ---------- Fiche ---------- */
@@ -292,10 +375,6 @@
           ${s.type ? `<div class="wide"><dt>Type de stage</dt><dd>${TYPES[s.type] || esc(s.type)}</dd></div>` : ''}
           ${s.sujet ? `<div class="wide"><dt>Sujet</dt><dd>${esc(s.sujet)}</dd></div>` : ''}
         </dl>
-        <div class="detail-actions">
-          <button type="button" class="tinted" data-action="zoom-here">Zoomer</button>
-          <button type="button" class="tinted" data-action="copy-link">Copier le lien</button>
-        </div>
       </div>`;
   }
 
@@ -310,13 +389,12 @@
     state.sel = id;
     const s = id !== null ? byId.get(id) : null;
     const card = $('[data-detail-card]');
-    const listView = $('[data-view="list"]');
     const detailView = $('[data-view="detail"]');
 
     if (!s) {
       card.hidden = true;
       detailView.hidden = true;
-      listView.hidden = false;
+      showView('list');
       if (document.body.dataset.sheet === 'detail') setSheet('peek');
     } else {
       const m = markers.get(id);
@@ -326,8 +404,7 @@
       card.hidden = false;
       $('[data-detail]').innerHTML = detailHtml(s, false);
       if (!DESKTOP.matches) {
-        listView.hidden = true;
-        detailView.hidden = false;
+        showView('detail');
         setSheet('detail');
       }
       if (opts.reveal) {
@@ -395,7 +472,8 @@
     if (state.cycles.size !== DEFAULTS.cycles.length) p.set('cycle', [...state.cycles].join(','));
     if (state.structures.size !== DEFAULTS.structures.length) p.set('structure', [...state.structures].join(','));
     if (state.lieu !== 'all') p.set('lieu', state.lieu);
-    if (state.parcours !== 'all') p.set('parcours', state.parcours);
+    if (state.parcours.size !== PARCOURS.length) p.set('parcours', [...state.parcours].join(','));
+    if (state.tags.size) p.set('tags', [...state.tags].join(','));
     if (state.q) p.set('q', state.q);
     if (state.sel !== null) p.set('stage', state.sel);
     const hash = p.toString();
@@ -411,8 +489,16 @@
     state.annee = YEARS.includes(p.get('annee')) ? p.get('annee') : 'all';
     state.cycles = list('cycle', DEFAULTS.cycles);
     state.structures = list('structure', DEFAULTS.structures);
-    state.lieu = PLACES[p.get('lieu')] ? p.get('lieu') : 'all';
-    state.parcours = PARCOURS.includes(p.get('parcours')) ? p.get('parcours') : 'all';
+    // Anciens liens : lieu=fr|abroad (segments) ; version intermédiaire : pays=Espagne.
+    const lieu = p.get('lieu');
+    if (lieu === 'fr') state.lieu = 'France';
+    else if (lieu === 'abroad' || COUNTRIES.includes(lieu)) state.lieu = lieu;
+    else if (COUNTRIES.includes(p.get('pays'))) state.lieu = p.get('pays');
+    else state.lieu = 'all';
+    state.parcours = p.has('parcours')
+      ? new Set(p.get('parcours').split(',').filter((k) => PARCOURS.includes(k)))
+      : new Set(PARCOURS);
+    state.tags = new Set((p.get('tags') || '').split(',').filter((t) => TAG_KEYS.includes(t)));
     state.q = p.get('q') || '';
     const id = p.get('stage');
     return byId.has(id) ? id : null;
@@ -423,7 +509,8 @@
     const cols = [
       ['Année', (s) => s.annee], ['Cycle', (s) => CYCLES[s.cycle].label], ['Parcours', (s) => s.parcours || ''],
       ['Type de structure', (s) => STRUCTURES[s.structure].label], ['Structure', (s) => s.org], ['Ville', (s) => s.ville],
-      ['Pays', (s) => s.pays], ['Sujet', (s) => s.sujet], ['Latitude', (s) => s.lat], ['Longitude', (s) => s.lon]
+      ['Pays', (s) => s.pays], ['Sujet', (s) => s.sujet], ['Latitude', (s) => s.lat], ['Longitude', (s) => s.lon],
+      ['Tags', (s) => s.tags.join(' | ')]
     ];
     const cell = (v) => `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""')}"`;
     const lines = [cols.map((c) => cell(c[0])).join(';')].concat(visible.map((s) => cols.map((c) => cell(c[1](s))).join(';')));
@@ -436,21 +523,15 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
   }
 
-  let toastTimer;
-  function toast(text) {
-    const el = $('[data-toast]');
-    el.textContent = text;
-    el.hidden = false;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { el.hidden = true; }, 2400);
-  }
-
   /* ---------- Fond de carte ---------- */
   function renderLayersMenu() {
-    $('[data-layers-menu]').innerHTML = BASES.map((b) => `
-      <button type="button" role="menuitemradio" data-base="${b.id}" aria-checked="${b === base}">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${b.label}
-      </button>`).join('');
+    const item = (checked, attrs, label) => `
+      <button type="button" role="menuitemradio" ${attrs} aria-checked="${checked}">
+        ${CHECK}${label}
+      </button>`;
+    $('[data-layers-menu]').innerHTML =
+      '<div class="menu-heading">Fond de carte</div>' +
+      BASES.map((b) => item(base === b, `data-base="${b.id}"`, b.label)).join('');
   }
   function toggleLayersMenu(open) {
     const menu = $('[data-layers-menu]');
@@ -544,13 +625,29 @@
       if (state.cycles.has(k)) state.cycles.delete(k); else state.cycles.add(k);
       return update();
     }
+    if (t.dataset.parcours !== undefined) {
+      const k = t.dataset.parcours;
+      if (state.parcours.has(k)) state.parcours.delete(k);
+      else { state.parcours.add(k); state.cycles.add('ing3'); } // sinon le parcours coché resterait masqué
+      return update();
+    }
+    if (t.dataset.tag !== undefined) {
+      const k = t.dataset.tag;
+      if (state.tags.has(k)) state.tags.delete(k); else state.tags.add(k);
+      return update();
+    }
+    if (t.dataset.toggleParcours !== undefined) {
+      parcoursOpen = !parcoursOpen;
+      return renderControls();
+    }
     if (t.dataset.structure) {
       const k = t.dataset.structure;
       if (state.structures.has(k)) state.structures.delete(k); else state.structures.add(k);
       return update();
     }
-    if (t.dataset.place) { state.lieu = t.dataset.place; return update(); }
-    if (t.dataset.id) return setSelection(t.dataset.id, { reveal: true, zoom: 9 });
+    if (t.dataset.id) {
+      return setSelection(t.dataset.id, { reveal: true, zoom: 9 });
+    }
     if (t.dataset.base) {
       const next = BASES.find((b) => b.id === t.dataset.base);
       if (next !== base) { map.removeLayer(base.layer); base = next; base.layer.addTo(map); }
@@ -563,7 +660,8 @@
         state.cycles = new Set(DEFAULTS.cycles);
         state.structures = new Set(DEFAULTS.structures);
         state.lieu = 'all';
-        state.parcours = 'all';
+        state.parcours = new Set(PARCOURS);
+        state.tags = new Set();
         state.q = '';
         return update();
       case 'more': listLimit += 200; return renderList();
@@ -574,22 +672,13 @@
       case 'layers': return toggleLayersMenu();
       case 'about': return $('[data-about]').showModal();
       case 'close-detail': return setSelection(null);
-      case 'zoom-here': {
-        const m = markers.get(state.sel);
-        if (m) clusters.zoomToShowLayer(m, () => centerOn(m.getLatLng(), Math.max(map.getZoom(), 14)));
-        return;
-      }
-      case 'copy-link': {
-        const url = location.href;
-        if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => toast('Lien copié'), () => toast(url));
-        else toast(url);
-        return;
-      }
       case 'toggle-sheet':
-        if (document.body.dataset.sheet === 'detail') return setSelection(null);
+        if (document.body.dataset.sheet === 'detail' && state.sel !== null) return setSelection(null);
         return setSheet(document.body.dataset.sheet === 'full' ? 'peek' : 'full');
       case 'open-filters': return openFilters(true);
       case 'close-filters': return openFilters(false);
+      case 'toggle-results': return setResults(!resultsOpen);
+      case 'close-results': return setResults(false);
       default:
     }
   });
@@ -600,7 +689,8 @@
     if (menuTrigger) return closeMenu(true);
     if (!$('[data-layers-menu]').hidden) return toggleLayersMenu(false);
     if (!$('[data-filters-sheet]').hidden) return openFilters(false);
-    if (state.sel !== null) setSelection(null);
+    if (state.sel !== null) return setSelection(null);
+    if (!$('[data-results]').hidden) return setResults(false);
   });
 
   let searchTimer;
@@ -611,7 +701,10 @@
       searchTimer = setTimeout(update, 120);
     });
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !DESKTOP.matches) { input.blur(); setSheet('full'); }
+      // Entrée dans la recherche : montre la liste des résultats.
+      if (e.key !== 'Enter') return;
+      if (DESKTOP.matches) setResults(true);
+      else { input.blur(); setSheet('full'); }
     });
   });
   map.on('click', () => {
@@ -621,17 +714,18 @@
   });
   window.addEventListener('hashchange', () => {
     const id = readHash();
+    if (state.parcours.size !== PARCOURS.length) parcoursOpen = true;
     update();
     if (id !== state.sel) setSelection(id, { reveal: id !== null, zoom: 9 });
   });
   DESKTOP.addEventListener('change', () => {
     if (DESKTOP.matches) {
-      $('[data-view="list"]').hidden = false;
-      $('[data-view="detail"]').hidden = true;
+      showView('list');
       openFilters(false);
       setSheet('peek');
-    } else if (state.sel !== null) {
-      setSelection(state.sel);
+    } else {
+      setResults(false);
+      if (state.sel !== null) setSelection(state.sel);
     }
     map.invalidateSize();
   });
@@ -653,8 +747,10 @@
       });
       YEARS = [...new Set(STAGES.map((s) => s.annee))].filter(Boolean).sort().reverse();
       PARCOURS = [...new Set(STAGES.map((s) => s.parcours).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
+      COUNTRIES = [...new Set(STAGES.map((s) => s.pays))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'fr'));
       if (data.generated) $('[data-generated]').textContent = `, mises à jour le ${new Date(data.generated).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
       const id = readHash();
+      parcoursOpen = state.parcours.size !== PARCOURS.length; // déplie si un filtre parcours est actif
       update();
       if (id !== null) setSelection(id, { reveal: true, zoom: 9 });
     })

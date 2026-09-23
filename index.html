@@ -13,7 +13,7 @@
 <body>
   <div id="map" aria-label="Carte des stages"></div>
 
-  <!-- Recherche et année, en haut sur mobile -->
+  <!-- Recherche, en haut sur mobile -->
   <div class="topbar">
     <div class="glass searchbar">
       <label class="search">
@@ -25,26 +25,6 @@
         <span class="badge" data-filter-badge hidden></span>
       </button>
     </div>
-    <button type="button" class="glass select-capsule" data-menu="annee" aria-haspopup="listbox" aria-expanded="false">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
-      <span class="sr-only">Année :</span>
-      <span data-menu-value="annee">Toutes les années</span>
-      <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
-    </button>
-  </div>
-
-  <!-- Filtres sur la carte, bureau -->
-  <div class="glass toolbar" role="toolbar" aria-label="Filtres">
-    <button type="button" class="select-capsule bare" data-menu="annee" aria-haspopup="listbox" aria-expanded="false">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
-      <span class="sr-only">Année :</span>
-      <span data-menu-value="annee">Toutes les années</span>
-      <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
-    </button>
-    <span class="toolbar-sep" aria-hidden="true"></span>
-    <div class="chips" role="group" aria-label="Structure" data-structures></div>
-    <span class="toolbar-sep" aria-hidden="true"></span>
-    <div class="segments" role="radiogroup" aria-label="Lieu" data-places></div>
   </div>
 
   <!-- Panneau : liste et légende (feuille en bas sur mobile) -->
@@ -60,24 +40,52 @@
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
         <input type="search" data-search placeholder="Ville, structure, sujet" aria-label="Rechercher un stage" autocomplete="off">
       </label>
-      <section class="section desktop-only">
-        <h2>Cycle</h2>
-        <div class="card" role="group" aria-label="Cycle" data-cycles></div>
-      </section>
-      <div class="cycle-chips mobile-only" role="group" aria-label="Cycle" data-cycle-chips></div>
-      <button type="button" class="card select-row desktop-only" data-menu="parcours" aria-haspopup="listbox" aria-expanded="false">
-        <span class="row-label">Parcours</span>
-        <span class="select-value" data-menu-value="parcours">Tous</span>
-        <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
+      <!-- Tous les filtres, bureau ; la feuille mobile en reprend les mêmes sections -->
+      <div class="filters desktop-only">
+        <button type="button" class="card select-row" data-menu="annee" aria-haspopup="listbox" aria-expanded="false">
+          <span class="row-label">Année</span>
+          <span class="select-value" data-menu-value="annee">Toutes les années</span>
+          <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
+        </button>
+        <section class="section">
+          <h2>Cycle</h2>
+          <div class="card" role="group" aria-label="Cycle" data-cycles></div>
+        </section>
+        <section class="section">
+          <h2>Structure</h2>
+          <div class="card" role="group" aria-label="Structure" data-structure-rows></div>
+        </section>
+        <button type="button" class="card select-row" data-menu="lieu" aria-haspopup="listbox" aria-expanded="false">
+          <span class="row-label">Lieu</span>
+          <span class="select-value" data-menu-value="lieu">Partout</span>
+          <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
+        </button>
+        <section class="section">
+          <h2>Tags</h2>
+          <div class="tag-group">
+            <h3>Techniques</h3>
+            <div class="tag-chips" role="group" aria-label="Tags techniques" data-tags="techniques"></div>
+          </div>
+          <div class="tag-group">
+            <h3>Domaines</h3>
+            <div class="tag-chips" role="group" aria-label="Domaines d’application" data-tags="domaines"></div>
+          </div>
+        </section>
+      </div>
+      <!-- Bureau : ouvre la liste des stages dans un panneau adjacent -->
+      <button type="button" class="prominent results-button desktop-only" data-action="toggle-results" aria-expanded="false" aria-controls="results">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span data-results-label>Afficher les stages</span>
       </button>
-      <div class="results-header">
+      <div class="cycle-chips mobile-only" role="group" aria-label="Cycle" data-cycle-chips></div>
+      <div class="results-header mobile-only">
         <h2 data-count></h2>
         <div class="results-actions">
           <button type="button" class="plain" data-action="reset" hidden>Réinitialiser</button>
           <button type="button" class="plain" data-action="export">Exporter</button>
         </div>
       </div>
-      <div class="card list" data-list></div>
+      <div class="card list mobile-only" data-list></div>
     </div>
 
     <div class="panel-view" data-view="detail" hidden>
@@ -86,6 +94,21 @@
       </button>
       <div data-detail></div>
     </div>
+  </aside>
+
+  <!-- Liste des stages, bureau : panneau adjacent aux filtres, ouvert par le bouton du panneau -->
+  <aside class="results-panel desktop-only" id="results" data-results hidden aria-label="Liste des stages">
+    <header class="results-header">
+      <h2 data-count></h2>
+      <div class="results-actions">
+        <button type="button" class="plain" data-action="reset" hidden>Réinitialiser</button>
+        <button type="button" class="plain" data-action="export">Exporter</button>
+        <button type="button" class="close" data-action="close-results" aria-label="Fermer la liste">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="card list" data-list></div>
   </aside>
 
   <!-- Fiche d'un stage, bureau -->
@@ -103,14 +126,14 @@
     <button type="button" class="icon-button" data-action="fit" aria-label="Voir tous les stages affichés">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/></svg>
     </button>
-    <button type="button" class="icon-button" data-action="layers" aria-label="Fond de carte" aria-haspopup="true" aria-expanded="false">
+    <button type="button" class="icon-button" data-action="layers" aria-label="Couches de la carte" aria-haspopup="true" aria-expanded="false">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l8.5 4.5L12 13 3.5 8.5z"/><path d="M3.5 12.5L12 17l8.5-4.5"/><path d="M3.5 16.5L12 21l8.5-4.5"/></svg>
     </button>
     <button type="button" class="icon-button" data-action="about" aria-label="À propos">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r="0.6" fill="currentColor"/></svg>
     </button>
   </div>
-  <div class="glass layers-menu" role="menu" aria-label="Fond de carte" data-layers-menu hidden></div>
+  <div class="glass layers-menu" role="menu" aria-label="Couches de la carte" data-layers-menu hidden></div>
 
   <div class="glass menu" role="listbox" data-options-menu hidden></div>
 
@@ -125,6 +148,11 @@
       </button>
     </header>
     <div class="sheet-body">
+      <button type="button" class="card select-row" data-menu="annee" aria-haspopup="listbox" aria-expanded="false">
+        <span class="row-label">Année</span>
+        <span class="select-value" data-menu-value="annee">Toutes les années</span>
+        <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
+      </button>
       <section class="section">
         <h2>Cycle</h2>
         <div class="card" role="group" aria-label="Cycle" data-cycles></div>
@@ -133,15 +161,22 @@
         <h2>Structure</h2>
         <div class="card" role="group" aria-label="Structure" data-structure-rows></div>
       </section>
-      <section class="section">
-        <h2>Lieu</h2>
-        <div class="segmented" role="radiogroup" aria-label="Lieu" data-places></div>
-      </section>
-      <button type="button" class="card select-row" data-menu="parcours" aria-haspopup="listbox" aria-expanded="false">
-        <span class="row-label">Parcours</span>
-        <span class="select-value" data-menu-value="parcours">Tous</span>
+      <button type="button" class="card select-row" data-menu="lieu" aria-haspopup="listbox" aria-expanded="false">
+        <span class="row-label">Lieu</span>
+        <span class="select-value" data-menu-value="lieu">Partout</span>
         <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
       </button>
+      <section class="section">
+        <h2>Tags</h2>
+        <div class="tag-group">
+          <h3>Techniques</h3>
+          <div class="tag-chips" role="group" aria-label="Tags techniques" data-tags="techniques"></div>
+        </div>
+        <div class="tag-group">
+          <h3>Domaines</h3>
+          <div class="tag-chips" role="group" aria-label="Domaines d’application" data-tags="domaines"></div>
+        </div>
+      </section>
     </div>
     <footer class="sheet-footer">
       <button type="button" class="prominent" data-action="close-filters" data-apply></button>
@@ -157,8 +192,6 @@
     <p>Fond de carte : plan clair d’après OpenStreetMap (tuiles OpenFreeMap), Plan IGN et photographies aériennes de la Géoplateforme.</p>
     <form method="dialog"><button class="prominent" type="submit">Fermer</button></form>
   </dialog>
-
-  <div class="toast" data-toast role="status" hidden></div>
 
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
