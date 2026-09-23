@@ -76,6 +76,10 @@
   --c-geo: #ff9230;
   --c-lpro: #ff625d;
 }
+/* Centre des groupes, contour et rond des pins : la couleur des cartes de l'interface (gris foncé en sombre)
+   sur le plan clair ; blanc sur le Plan IGN et les photographies, qui ne s'assombrissent pas. */
+:root { --marker-center: var(--bg-elevated); --marker-center-label: var(--label); }
+:root[data-base="plan"], :root[data-base="ortho"] { --marker-center: #ffffff; --marker-center-label: #000000; }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
@@ -488,8 +492,9 @@ a { color: var(--accent); }
 /* ---------- Marqueurs ---------- */
 .pin { background: transparent; border: 0; }
 .pin svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.3)); overflow: visible; }
-/* Contour et rond central des pins : blancs en clair, du même gris que le centre des groupes en sombre */
-.pin path { stroke: var(--bg-elevated); stroke-width: 1.5; }
+.pin path { stroke: var(--marker-center); stroke-width: 1.5; }
+.pin .pin-dot { fill: var(--marker-center); }
+/* Pins des listes : le rond prend le fond de la carte où ils sont posés */
 .pin-dot { fill: var(--bg-elevated); }
 .pin--ing2 path { fill: var(--c-ing2); }
 .pin--ing3 path { fill: var(--c-ing3); }
@@ -505,9 +510,8 @@ a { color: var(--accent); }
   box-shadow: var(--shadow-knob);
   transition: transform 150ms var(--ease-out);
 }
-/* Centre du groupe : blanc en clair, gris foncé en sombre, pour ne pas trancher sur le fond sombre */
 .cluster span {
-  width: 32px; height: 32px; border-radius: 999px; background: var(--bg-elevated); color: var(--label);
+  width: 32px; height: 32px; border-radius: 999px; background: var(--marker-center); color: var(--marker-center-label);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-rounded); font-size: 0.8125rem; font-weight: 700; font-variant-numeric: tabular-nums;
 }

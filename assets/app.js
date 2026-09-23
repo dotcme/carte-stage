@@ -132,8 +132,15 @@
     { id: 'plan', label: 'Plan IGN', layer: withFallback(geopf('GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2', 'image/png', 19)) },
     { id: 'ortho', label: 'Photographies aériennes', layer: withFallback(geopf('ORTHOIMAGERY.ORTHOPHOTOS', 'image/jpeg', 19)) }
   ];
-  let base = BASES[0];
-  base.layer.addTo(map);
+  let base = null;
+  // Le fond choisi est noté sur <html> : les pins et les groupes gardent un centre blanc sur le Plan IGN et les photos (style.css).
+  function setBase(next) {
+    if (base) map.removeLayer(base.layer);
+    base = next;
+    base.layer.addTo(map);
+    document.documentElement.dataset.base = base.id;
+  }
+  setBase(BASES[0]);
   map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
 
   const icons = {};
@@ -974,7 +981,7 @@
     }
     if (t.dataset.base) {
       const next = BASES.find((b) => b.id === t.dataset.base);
-      if (next !== base) { map.removeLayer(base.layer); base = next; base.layer.addTo(map); }
+      if (next !== base) setBase(next);
       return toggleLayersMenu(false);
     }
     if (t.dataset.appearance) {
