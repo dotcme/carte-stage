@@ -1098,7 +1098,12 @@
         markers.set(s.id, m);
       });
       YEARS = [...new Set(STAGES.map((s) => s.annee))].filter(Boolean).sort().reverse();
-      PARCOURS = [...new Set(STAGES.map((s) => s.parcours).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
+      // Parcours encore proposés l'année la plus récente en tête (ordre alpha) ; les parcours disparus (ex. DeSIGeo) en fin de liste.
+      const activeParcours = new Set(STAGES.filter((s) => s.annee === YEARS[0]).map((s) => s.parcours).filter(Boolean));
+      PARCOURS = [...new Set(STAGES.map((s) => s.parcours).filter(Boolean))].sort((a, b) => {
+        const diff = activeParcours.has(b) - activeParcours.has(a);
+        return diff || a.localeCompare(b, 'fr');
+      });
       // La France est dans les choix du haut du menu (France hexagonale) ; les autres pays suivent par ordre alphabétique.
       COUNTRIES = [...new Set(STAGES.map((s) => s.pays))].filter((pays) => pays && pays !== 'France').sort((a, b) => a.localeCompare(b, 'fr'));
       if (YEARS.length) $('[data-subtitle]').textContent = `Géodata Paris · ${YEARS[YEARS.length - 1]} à ${YEARS[0]}`;
