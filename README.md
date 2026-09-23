@@ -11,7 +11,7 @@ Carte interactive des stages réalisés par les étudiantes et étudiants de Gé
 - une fiche par stage, avec un lien à partager ;
 - le regroupement des points proches, avec la part de chaque cycle ;
 - l’export CSV des stages affichés ;
-- le choix du fond : Plan IGN, photographies aériennes ou OpenStreetMap.
+- le choix du fond : plan clair aux couleurs du site (par défaut, clair ou sombre selon le système), Plan IGN ou photographies aériennes.
 
 Les filtres sont enregistrés dans l’adresse de la page (`#annee=2024-2025&structure=labo`, par exemple) : un lien copié ouvre la carte dans le même état.
 
@@ -44,6 +44,7 @@ Ce classement automatique peut se tromper. Pour corriger une structure, ajoutez 
 
 ## Fichiers
 
-- `index.html`, `assets/style.css`, `assets/app.js` : le site (Leaflet et Leaflet.markercluster, chargés depuis jsDelivr).
+- `index.html`, `assets/style.css`, `assets/app.js` : le site (Leaflet, Leaflet.markercluster et MapLibre, chargés depuis jsDelivr).
+- `assets/basemap.js` : le style du plan clair (tuiles vectorielles OpenFreeMap, données OpenStreetMap).
 - `data/stages.json` : les stages, produits par le script.
 - `scripts/build-data.mjs` : récupération et nettoyage des données.

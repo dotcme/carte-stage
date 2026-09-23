@@ -83,7 +83,8 @@ body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
-#map { position: fixed; inset: 0; background: #d9e8f3; }
+#map { position: fixed; inset: 0; background: #d6e6f2; }
+@media (prefers-color-scheme: dark) { #map { background: #0f1d2a; } }
 [hidden] { display: none !important; }
 h1, h2, p { margin: 0; }
 button, input, select { font: inherit; color: inherit; }

@@ -40,28 +40,40 @@
   const state = { annee: 'all', cycles: new Set(DEFAULTS.cycles), structures: new Set(DEFAULTS.structures), lieu: 'all', parcours: 'all', q: '', sel: null };
 
   /* ---------- Carte ---------- */
-  const map = L.map('map', { zoomControl: false, minZoom: 2, worldCopyJump: true });
+  const map = L.map('map', { zoomControl: false, minZoom: 2, maxZoom: 19, worldCopyJump: true });
   const geopf = (layer, format, maxZoom) => L.tileLayer(
     `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${layer}&STYLE=normal&TILEMATRIXSET=PM&FORMAT=${format}&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}`,
     { maxZoom, attribution: '&copy; <a href="https://www.ign.fr/" target="_blank" rel="noopener">IGN</a> · Géoplateforme' }
   );
-  const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const CARTO_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
   const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
-  // Le Plan IGN n'a pas de tuiles détaillées partout hors de France : une tuile manquante est remplacée par OpenStreetMap.
+  // Le Plan IGN n'a pas de tuiles détaillées partout hors de France : une tuile manquante est remplacée par un plan clair.
   function withFallback(layer) {
-    layer.getAttribution = () => layer.options.attribution + ', ' + OSM_ATTRIBUTION;
+    layer.getAttribution = () => layer.options.attribution + ', ' + OSM_ATTRIBUTION + ', &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
     layer.on('tileerror', (e) => {
       if (e.tile.dataset.fallback) return;
       e.tile.dataset.fallback = '1';
-      e.tile.src = L.Util.template(OSM_URL, e.coords);
-      e.tile.style.opacity = '';
+      e.tile.src = L.Util.template(CARTO_URL, Object.assign({ s: 'abcd'[(e.coords.x + e.coords.y) % 4], r: L.Browser.retina ? '@2x' : '' }, e.coords));
     });
     return layer;
   }
+
+  // Plan clair : fond vectoriel aux couleurs de Lucent (assets/basemap.js), clair ou sombre selon le système.
+  const DARK = window.matchMedia('(prefers-color-scheme: dark)');
+  const theme = () => (DARK.matches ? 'dark' : 'light');
+  const vector = L.maplibreGL({
+    style: window.lucentBasemapStyle(theme()),
+    attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> ' + OSM_ATTRIBUTION
+  });
+  DARK.addEventListener('change', () => {
+    const gl = vector.getMaplibreMap && vector.getMaplibreMap();
+    if (gl) gl.setStyle(window.lucentBasemapStyle(theme()));
+  });
+
   const BASES = [
+    { id: 'clair', label: 'Plan clair', layer: vector },
     { id: 'plan', label: 'Plan IGN', layer: withFallback(geopf('GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2', 'image/png', 19)) },
-    { id: 'ortho', label: 'Photographies aériennes', layer: withFallback(geopf('ORTHOIMAGERY.ORTHOPHOTOS', 'image/jpeg', 19)) },
-    { id: 'osm', label: 'OpenStreetMap', layer: L.tileLayer(OSM_URL, { maxZoom: 19, attribution: OSM_ATTRIBUTION }) }
+    { id: 'ortho', label: 'Photographies aériennes', layer: withFallback(geopf('ORTHOIMAGERY.ORTHOPHOTOS', 'image/jpeg', 19)) }
   ];
   let base = BASES[0];
   base.layer.addTo(map);

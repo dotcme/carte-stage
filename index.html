@@ -7,6 +7,7 @@
   <meta name="description" content="Stages réalisés par les étudiantes et étudiants de Géodata Paris, par année, cycle et type de structure.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -149,7 +150,7 @@
     <p>Stages réalisés par les étudiantes et étudiants de Géodata Paris, de 2016-2017 à 2024-2025.</p>
     <p>Les données viennent de la <a href="https://macarte.ign.fr/carte/R3wixb/Carte-des-stages-edition-2025" target="_blank" rel="noopener">carte d’origine sur macarte</a><span data-generated></span>.</p>
     <p>Le type de structure (laboratoire, entreprise, service public) n’existe pas dans la source : il est déduit du nom de l’organisme et peut contenir des erreurs.</p>
-    <p>Fond de carte : Plan IGN et photographies aériennes de la Géoplateforme, ou OpenStreetMap.</p>
+    <p>Fond de carte : plan clair d’après OpenStreetMap (tuiles OpenFreeMap), Plan IGN et photographies aériennes de la Géoplateforme.</p>
     <form method="dialog"><button class="prominent" type="submit">Fermer</button></form>
   </dialog>
 
@@ -157,6 +158,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js"></script>
+  <script src="assets/basemap.js"></script>
   <script src="assets/app.js"></script>
 </body>
 </html>
