@@ -274,6 +274,17 @@ a { color: var(--accent); }
 }
 .panel-footer { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .panel-footer .plain { padding: 0 12px; }
+/* Réinitialiser apparaît en glissant depuis la gauche ; le bouton des stages se rétrécit pour lui faire place. */
+.panel-footer [data-action="reset"] {
+  max-width: 160px; overflow: hidden; white-space: nowrap;
+  transition: max-width 280ms var(--ease-out), padding 280ms var(--ease-out), margin 280ms var(--ease-out),
+    opacity 200ms var(--ease-out) 80ms, visibility 0s;
+}
+.panel-footer [data-action="reset"].is-collapsed {
+  max-width: 0; padding: 0; margin-right: -8px; opacity: 0; visibility: hidden;
+  transition: max-width 280ms var(--ease-out), padding 280ms var(--ease-out), margin 280ms var(--ease-out),
+    opacity 120ms var(--ease-out), visibility 0s 280ms;
+}
 .results-button { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 20px; white-space: nowrap; }
 .results-button .icon { width: 20px; height: 20px; stroke-width: 2.25; }
 

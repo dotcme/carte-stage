@@ -473,8 +473,10 @@
     badge.textContent = changed;
     $('[data-action="open-filters"]').setAttribute('aria-label', changed ? `Filtres, ${changed} actif${changed > 1 ? 's' : ''}` : 'Filtres');
     // Réinitialiser : masqué quand rien n'est filtré, sauf dans la feuille des filtres où il reste visible, inactif.
+    // Dans le pied du panneau, il se replie en animation plutôt que de disparaître d'un coup.
     $$('[data-action="reset"]').forEach((b) => {
       if (b.closest('[data-filters-sheet]')) b.disabled = isDefault();
+      else if (b.closest('.panel-footer')) { b.classList.toggle('is-collapsed', isDefault()); b.inert = isDefault(); }
       else b.hidden = isDefault();
     });
     restoreFocus(focused);
