@@ -612,6 +612,7 @@ a { color: var(--accent); }
   .panel {
     top: auto; left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom) + 8px);
     width: auto; height: var(--sheet-peek); padding: 0 16px 16px; border-radius: 42px;
+    overflow: hidden;
     transition: height 420ms var(--ease-out);
   }
   .panel.dragging { transition: none; }
@@ -655,17 +656,28 @@ a { color: var(--accent); }
   .chip[data-cycle][aria-pressed="false"] .dot { background: transparent; }
   .chip[data-cycle][aria-pressed="true"] { font-weight: 600; }
 
-  .list { min-height: 0; }
-  body[data-sheet="peek"] .list { display: none !important; }
+  /* La liste reste en page (masquée) quand la feuille est repliée : elle est déjà prête quand on tire la feuille. */
+  .list { min-height: 0; transition: opacity 280ms var(--ease-out), visibility 0s; }
+  body[data-sheet="peek"] .panel:not(.dragging) .list {
+    opacity: 0; visibility: hidden;
+    transition: opacity 200ms var(--ease-out), visibility 0s 200ms;
+  }
 
   .detail-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -16px; padding: 0 16px 8px; }
   .detail-head { padding: 0; }
 
   /* Outils : en haut à droite, sous la recherche ; pas de zoom sur écran tactile (pincer suffit) */
-  .tools { top: calc(env(safe-area-inset-top) + var(--inset) + 52px + 12px); bottom: auto; }
+  .tools {
+    top: calc(env(safe-area-inset-top) + var(--inset) + 52px + 12px); bottom: auto;
+    transition: opacity 420ms var(--ease-out), visibility 0s;
+  }
   .layers-menu { top: calc(env(safe-area-inset-top) + var(--inset) + 52px + 12px); bottom: auto; transform-origin: top right; }
-  body[data-sheet="full"] .tools, body[data-sheet="full"] .layers-menu,
-  body.filters-open .tools, body.filters-open .layers-menu { display: none; }
+  /* Sous la feuille pleine ou les filtres, les outils s'effacent en fondu, au rythme de la feuille. */
+  body[data-sheet="full"] .tools, body.filters-open .tools {
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 420ms var(--ease-out), visibility 0s 420ms;
+  }
+  body[data-sheet="full"] .layers-menu, body.filters-open .layers-menu { display: none; }
   .leaflet-bottom { bottom: calc(env(safe-area-inset-bottom) + var(--sheet-peek) + 12px); transition: bottom 420ms var(--ease-out); }
   body[data-sheet="detail"] .leaflet-bottom { bottom: calc(env(safe-area-inset-bottom) + min(540px, 100% - 200px) + 12px); }
   .leaflet-container .leaflet-control-attribution { margin: 0 12px 0 0; font-size: 0.625rem; line-height: 0.875rem; padding: 1px 8px; }
