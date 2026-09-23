@@ -2,22 +2,169 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Carte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Carte des stages</title>
+  <meta name="description" content="Stages réalisés par les étudiantes et étudiants de Géodata Paris, par année, cycle et type de structure.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-  <style>
-    html, body, #map { height: 100%; margin: 0; }
-  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-  <div id="map"></div>
+  <div id="map" aria-label="Carte des stages"></div>
+
+  <!-- Recherche et année, en haut sur mobile -->
+  <div class="topbar">
+    <div class="glass searchbar">
+      <label class="search">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input type="search" data-search placeholder="Ville, structure, sujet" aria-label="Rechercher un stage" autocomplete="off">
+      </label>
+      <button type="button" class="icon-button" data-action="open-filters" aria-label="Filtres">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+        <span class="badge" data-filter-badge hidden></span>
+      </button>
+    </div>
+    <button type="button" class="glass select-capsule" data-menu="annee" aria-haspopup="listbox" aria-expanded="false">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
+      <span class="sr-only">Année :</span>
+      <span data-menu-value="annee">Toutes les années</span>
+      <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
+    </button>
+  </div>
+
+  <!-- Filtres sur la carte, bureau -->
+  <div class="glass toolbar" role="toolbar" aria-label="Filtres">
+    <button type="button" class="select-capsule bare" data-menu="annee" aria-haspopup="listbox" aria-expanded="false">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
+      <span class="sr-only">Année :</span>
+      <span data-menu-value="annee">Toutes les années</span>
+      <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
+    </button>
+    <span class="toolbar-sep" aria-hidden="true"></span>
+    <div class="chips" role="group" aria-label="Structure" data-structures></div>
+    <span class="toolbar-sep" aria-hidden="true"></span>
+    <div class="segments" role="radiogroup" aria-label="Lieu" data-places></div>
+  </div>
+
+  <!-- Panneau : liste et légende (feuille en bas sur mobile) -->
+  <aside class="panel" data-sheet="peek" aria-label="Stages">
+    <button type="button" class="grabber" data-action="toggle-sheet" aria-label="Agrandir la liste"><span></span></button>
+
+    <div class="panel-view" data-view="list">
+      <header class="panel-header">
+        <h1>Stages</h1>
+        <p data-summary></p>
+      </header>
+      <label class="search field desktop-only">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input type="search" data-search placeholder="Ville, structure, sujet" aria-label="Rechercher un stage" autocomplete="off">
+      </label>
+      <section class="section desktop-only">
+        <h2>Cycle</h2>
+        <div class="card" role="group" aria-label="Cycle" data-cycles></div>
+      </section>
+      <div class="cycle-chips mobile-only" role="group" aria-label="Cycle" data-cycle-chips></div>
+      <button type="button" class="card select-row desktop-only" data-menu="parcours" aria-haspopup="listbox" aria-expanded="false">
+        <span class="row-label">Parcours</span>
+        <span class="select-value" data-menu-value="parcours">Tous</span>
+        <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
+      </button>
+      <div class="results-header">
+        <h2 data-count></h2>
+        <div class="results-actions">
+          <button type="button" class="plain" data-action="reset" hidden>Réinitialiser</button>
+          <button type="button" class="plain" data-action="export">Exporter</button>
+        </div>
+      </div>
+      <div class="card list" data-list></div>
+    </div>
+
+    <div class="panel-view" data-view="detail" hidden>
+      <button type="button" class="plain back" data-action="close-detail">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Stages
+      </button>
+      <div data-detail></div>
+    </div>
+  </aside>
+
+  <!-- Fiche d'un stage, bureau -->
+  <article class="detail-card" data-detail-card hidden aria-live="polite"></article>
+
+  <!-- Outils de carte -->
+  <div class="glass tools" role="group" aria-label="Carte">
+    <button type="button" class="icon-button" data-action="zoom-in" aria-label="Zoomer">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button type="button" class="icon-button" data-action="zoom-out" aria-label="Dézoomer">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
+    </button>
+    <span class="tools-sep" aria-hidden="true"></span>
+    <button type="button" class="icon-button" data-action="fit" aria-label="Voir tous les stages affichés">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/></svg>
+    </button>
+    <button type="button" class="icon-button" data-action="layers" aria-label="Fond de carte" aria-haspopup="true" aria-expanded="false">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l8.5 4.5L12 13 3.5 8.5z"/><path d="M3.5 12.5L12 17l8.5-4.5"/><path d="M3.5 16.5L12 21l8.5-4.5"/></svg>
+    </button>
+    <button type="button" class="icon-button" data-action="about" aria-label="À propos">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r="0.6" fill="currentColor"/></svg>
+    </button>
+  </div>
+  <div class="glass layers-menu" role="menu" aria-label="Fond de carte" data-layers-menu hidden></div>
+
+  <div class="glass menu" role="listbox" data-options-menu hidden></div>
+
+  <!-- Filtres, mobile -->
+  <div class="scrim" data-filters-scrim hidden></div>
+  <section class="filters-sheet" data-filters-sheet aria-label="Filtres" hidden>
+    <span class="grabber-bar" aria-hidden="true"></span>
+    <header class="sheet-header">
+      <h1>Filtres</h1>
+      <button type="button" class="close" data-action="close-filters" aria-label="Fermer">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+    <div class="sheet-body">
+      <section class="section">
+        <h2>Cycle</h2>
+        <div class="card" role="group" aria-label="Cycle" data-cycles></div>
+      </section>
+      <section class="section">
+        <h2>Structure</h2>
+        <div class="card" role="group" aria-label="Structure" data-structure-rows></div>
+      </section>
+      <section class="section">
+        <h2>Lieu</h2>
+        <div class="segmented" role="radiogroup" aria-label="Lieu" data-places></div>
+      </section>
+      <button type="button" class="card select-row" data-menu="parcours" aria-haspopup="listbox" aria-expanded="false">
+        <span class="row-label">Parcours</span>
+        <span class="select-value" data-menu-value="parcours">Tous</span>
+        <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
+      </button>
+    </div>
+    <footer class="sheet-footer">
+      <button type="button" class="prominent" data-action="close-filters" data-apply></button>
+      <button type="button" class="plain" data-action="reset">Réinitialiser</button>
+    </footer>
+  </section>
+
+  <dialog class="about" data-about>
+    <h1>Carte des stages</h1>
+    <p>Stages réalisés par les étudiantes et étudiants de Géodata Paris, de 2016-2017 à 2024-2025.</p>
+    <p>Les données viennent de la <a href="https://macarte.ign.fr/carte/R3wixb/Carte-des-stages-edition-2025" target="_blank" rel="noopener">carte d’origine sur macarte</a><span data-generated></span>.</p>
+    <p>Le type de structure (laboratoire, entreprise, service public) n’existe pas dans la source : il est déduit du nom de l’organisme et peut contenir des erreurs.</p>
+    <p>Fond de carte : plan clair d’après OpenStreetMap (tuiles OpenFreeMap), Plan IGN et photographies aériennes de la Géoplateforme.</p>
+    <form method="dialog"><button class="prominent" type="submit">Fermer</button></form>
+  </dialog>
+
+  <div class="toast" data-toast role="status" hidden></div>
+
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    const map = L.map('map').setView([46.6, 2.4], 6);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(map);
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js"></script>
+  <script src="assets/basemap.js"></script>
+  <script src="assets/app.js"></script>
 </body>
 </html>
