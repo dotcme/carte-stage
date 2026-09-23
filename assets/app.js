@@ -1026,7 +1026,9 @@
       });
       YEARS = [...new Set(STAGES.map((s) => s.annee))].filter(Boolean).sort().reverse();
       PARCOURS = [...new Set(STAGES.map((s) => s.parcours).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
-      COUNTRIES = [...new Set(STAGES.map((s) => s.pays))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'fr'));
+      // La France en tête (les deux tiers des stages), puis les autres pays par ordre alphabétique.
+      COUNTRIES = [...new Set(STAGES.map((s) => s.pays))].filter(Boolean)
+        .sort((a, b) => (b === 'France') - (a === 'France') || a.localeCompare(b, 'fr'));
       if (YEARS.length) $('[data-subtitle]').textContent = `Géodata Paris · ${YEARS[YEARS.length - 1]} à ${YEARS[0]}`;
       if (data.generated) $('[data-generated]').textContent = `, mises à jour le ${new Date(data.generated).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
       const id = readHash();
