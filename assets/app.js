@@ -267,9 +267,8 @@
     const card = state.sel !== null && !(resultsOpen && window.innerWidth < 1280);
     if (DESKTOP.matches) return { paddingTopLeft: [gauche, 32], paddingBottomRight: [card ? 16 + 48 + 12 + 380 + 24 : 80, 32] };
     // Hauteur visée par la feuille (la transition CSS peut être en cours) : voir style.css.
-    const h = window.innerHeight;
-    const peek = parseFloat(cssVar('--sheet-peek')) || 156;
-    const sheet = { peek, detail: Math.min(540, h - 200), full: h - 84 }[document.body.dataset.sheet] || peek;
+    const H = sheetHeights();
+    const sheet = H[document.body.dataset.sheet] || H.peek;
     return { paddingTopLeft: [24, 96], paddingBottomRight: [72, sheet + 32] };
   }
 
@@ -761,10 +760,21 @@
   }
 
   /* ---------- Feuille mobile ---------- */
+  // Mêmes hauteurs que style.css, marges de sécurité (encoche, barre d'accueil) comprises,
+  // pour que la feuille se cale sans sauter à la fin d'un glissement.
+  let safeProbe = null;
   function sheetHeights() {
+    if (!safeProbe) {
+      safeProbe = document.createElement('div');
+      safeProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;'
+        + 'padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)';
+      document.body.appendChild(safeProbe);
+    }
+    const cs = getComputedStyle(safeProbe);
     const h = window.innerHeight;
     const peek = parseFloat(cssVar('--sheet-peek')) || 156;
-    return { peek, detail: Math.min(540, h - 200), full: h - 84 };
+    const full = h - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0) - 84;
+    return { peek, detail: Math.min(540, h - 200), full };
   }
   function setSheet(mode) {
     document.body.dataset.sheet = mode;
@@ -794,6 +804,7 @@
   let swallowClick = false;
   function draggable(el, onMove, onEnd) {
     let d = null;
+    let frame = 0;
     el.addEventListener('pointerdown', (e) => {
       if (e.button > 0 || !e.target.closest('[data-sheet-handle], [data-filters-handle]')) return;
       if (e.target.closest('button:not(.grabber)')) return;
@@ -805,19 +816,37 @@
       if (!d.moved) {
         if (Math.abs(dy) < 8) return;
         d.moved = true;
+        // Le glissement part d'ici : la feuille suit le doigt sans rattraper d'un coup les 8 px de seuil.
+        d.y = e.clientY;
+        d.h = el.getBoundingClientRect().height;
         el.setPointerCapture(e.pointerId);
         el.classList.add('dragging');
       }
-      if (e.timeStamp > d.lastT) d.v = (e.clientY - d.lastY) / (e.timeStamp - d.lastT);
+      // Vitesse lissée sur les derniers mouvements, pour ne pas dépendre d'un seul événement.
+      if (e.timeStamp > d.lastT) {
+        const v = (e.clientY - d.lastY) / (e.timeStamp - d.lastT);
+        d.v = d.v * 0.4 + v * 0.6;
+      }
       d.lastY = e.clientY;
       d.lastT = e.timeStamp;
-      onMove(dy, d);
+      // Une mise à jour par image, pas une par événement tactile.
+      if (!frame) {
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          if (d && d.moved) onMove(d.lastY - d.y, d);
+        });
+      }
     });
     const end = (e) => {
       if (!d || e.pointerId !== d.id) return;
       const done = d;
       d = null;
       if (!done.moved) return;
+      cancelAnimationFrame(frame);
+      frame = 0;
+      // Doigt immobile avant d'être levé : pas d'élan, la feuille se cale sur la hauteur la plus proche.
+      if (e.timeStamp - done.lastT > 100) done.v = 0;
+      onMove(e.clientY - done.y, done);
       swallowClick = true;
       setTimeout(() => { swallowClick = false; }, 0);
       onEnd(e.clientY - done.y, done);

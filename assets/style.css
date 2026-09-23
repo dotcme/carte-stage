@@ -612,6 +612,7 @@ a { color: var(--accent); }
   .panel {
     top: auto; left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom) + 8px);
     width: auto; height: var(--sheet-peek); padding: 0 16px 16px; border-radius: 42px;
+    overflow: hidden;
     transition: height 420ms var(--ease-out);
   }
   .panel.dragging { transition: none; }
@@ -655,8 +656,12 @@ a { color: var(--accent); }
   .chip[data-cycle][aria-pressed="false"] .dot { background: transparent; }
   .chip[data-cycle][aria-pressed="true"] { font-weight: 600; }
 
-  .list { min-height: 0; }
-  body[data-sheet="peek"] .list { display: none !important; }
+  /* La liste reste en page (masquée) quand la feuille est repliée : elle est déjà prête quand on tire la feuille. */
+  .list { min-height: 0; transition: opacity 280ms var(--ease-out), visibility 0s; }
+  body[data-sheet="peek"] .panel:not(.dragging) .list {
+    opacity: 0; visibility: hidden;
+    transition: opacity 200ms var(--ease-out), visibility 0s 200ms;
+  }
 
   .detail-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -16px; padding: 0 16px 8px; }
   .detail-head { padding: 0; }
