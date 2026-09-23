@@ -6,7 +6,7 @@ Carte interactive des stages réalisés par les étudiantes et étudiants de Gé
 - une recherche par ville, structure ou sujet ;
 - les chiffres clés des stages affichés : nombre, pays, stages à l’étranger ;
 - la liste des stages affichés, classée par année et synchronisée avec la carte — sur ordinateur, elle s'ouvre par un bouton ou en appuyant sur Entrée dans la recherche, dans un panneau à côté des filtres ; sur mobile, dans la feuille du bas, qu'on agrandit en la touchant ou en la faisant glisser ;
-- sur mobile, des filtres rapides dans la feuille (année, cycles, lieu) ; les autres sont dans la feuille des filtres, ouverte depuis la recherche ;
+- sur mobile, des filtres rapides dans la feuille (année, cycles, parcours de 3e année, lieu) ; les autres sont dans la feuille des filtres, ouverte depuis la recherche. La capsule « Parcours », à côté de « 3e année », ouvre un menu à choix multiple : depuis « Tous les parcours », toucher un parcours ne garde que lui, les touchers suivants en ajoutent ou en retirent ;
 - une fiche par stage : ses tags (un toucher filtre la carte), les autres stages de la même structure, et deux boutons, « Partager » (la feuille de partage du téléphone, ou le lien copié sur ordinateur) et « Centrer » ;
 - le regroupement des points proches, avec la part de chaque cycle ;
 - l’export CSV des stages affichés ;

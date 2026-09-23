@@ -60,6 +60,7 @@
   let PARCOURS = [];
   let COUNTRIES = [];
   let countryCounts = {}; // comptes par pays, pour le menu du filtre Lieu
+  let parcoursCounts = {}; // comptes par parcours, pour les lignes des filtres et le menu des filtres rapides
   let parcoursOpen = false; // parcours de 3e année dépliés sous la ligne ing3 (état d'affichage seul)
   let resultsOpen = false; // panneau de la liste des stages, ouvert (bureau)
   let sheetBeforeDetail = 'peek'; // hauteur de la feuille mobile à retrouver en fermant la fiche
@@ -231,6 +232,25 @@
   }
   function isDefault() { return !changedCount() && state.annee === 'all' && !state.q; }
 
+  // Parcours de 3e année, menu des filtres rapides (mobile) : « Tous les parcours » exclut les autres choix.
+  // Depuis « Tous », toucher un parcours ne garde que lui ; les touchers suivants en ajoutent ou en retirent,
+  // et retirer le dernier revient à tous.
+  const allParcours = () => state.parcours.size === PARCOURS.length;
+  function pickParcours(v) {
+    if (v === 'all') state.parcours = new Set(PARCOURS);
+    else if (allParcours()) state.parcours = new Set([v]);
+    else {
+      if (state.parcours.has(v)) state.parcours.delete(v); else state.parcours.add(v);
+      if (!state.parcours.size) state.parcours = new Set(PARCOURS);
+    }
+    state.cycles.add('ing3'); // sinon le parcours choisi resterait masqué
+  }
+  function parcoursSummary() {
+    if (allParcours()) return null;
+    if (!state.parcours.size) return 'Aucun parcours';
+    return state.parcours.size === 1 ? [...state.parcours][0] : `${state.parcours.size} parcours`;
+  }
+
   /* ---------- Rendu des contrôles ---------- */
   const MENUS = {
     annee: { name: 'Année', options: () => YEARS, label: (v) => (v === 'all' ? 'Toutes les années' : v) },
@@ -239,18 +259,30 @@
       name: 'Lieu', options: () => [...Object.keys(LIEUX), null, ...COUNTRIES],
       label: (v) => (v === 'all' ? 'Partout' : lieuChoice(v) ? lieuChoice(v).label : v),
       count: (v) => countryCounts[v] || 0
+    },
+    // Choix multiple : le menu reste ouvert pendant qu'on coche.
+    parcours: {
+      name: 'Parcours', heading: 'Parcours de 3e année', multi: true, options: () => PARCOURS,
+      label: (v) => (v === 'all' ? 'Tous les parcours' : v),
+      count: (v) => parcoursCounts[v] || 0,
+      selected: (v) => (v === 'all' ? allParcours() : !allParcours() && state.parcours.has(v)),
+      summary: parcoursSummary,
+      pick: pickParcours
     }
   };
   function renderMenu(key) {
     const m = MENUS[key];
+    const selected = m.selected || ((v) => state[key] === v);
     const item = (v) => `
-      <button type="button" class="menu-item" role="option" data-option="${esc(v)}" aria-selected="${state[key] === v}" tabindex="-1">
+      <button type="button" class="menu-item" role="option" data-option="${esc(v)}" aria-selected="${selected(v)}" tabindex="-1">
         ${CHECK}${esc(m.label(v))}${m.count && v !== 'all' ? `<span class="menu-count">${fmt(m.count(v))}</span>` : ''}
       </button>`;
     const menu = $('[data-options-menu]');
     const sep = '<div class="menu-sep" role="separator"></div>';
-    menu.setAttribute('aria-label', m.name);
-    menu.innerHTML = item('all') + sep + m.options().map((v) => (v === null ? sep : item(v))).join('');
+    menu.setAttribute('aria-label', m.heading || m.name);
+    menu.setAttribute('aria-multiselectable', String(!!m.multi));
+    const heading = m.heading ? `<div class="menu-heading" aria-hidden="true">${m.heading}${m.multi ? '<small>Plusieurs choix possibles</small>' : ''}</div>` : '';
+    menu.innerHTML = heading + item('all') + sep + m.options().map((v) => (v === null ? sep : item(v))).join('');
   }
 
   // Les contrôles sont redessinés à chaque filtre : le focus clavier revient sur le même contrôle.
@@ -265,9 +297,9 @@
     const focused = focusKey(document.activeElement);
     const cycleCounts = {};
     const structCounts = {};
-    const parcoursCounts = {};
     const tagCounts = {};
     countryCounts = {};
+    parcoursCounts = {};
     STAGES.forEach((s) => {
       if (matches(s, 'cycle')) cycleCounts[s.cycle] = (cycleCounts[s.cycle] || 0) + 1;
       if (matches(s, 'structure')) structCounts[s.structure] = (structCounts[s.structure] || 0) + 1;
@@ -325,21 +357,24 @@
       el.innerHTML = Object.keys(group).map((t) => tagChip(t, group[t])).join('');
     });
 
-    // Mobile : filtres rapides dans la feuille (année, cycles, lieu), les mêmes que sur ordinateur.
-    const quickMenu = (key, icon) => {
-      const set = state[key] !== 'all';
+    // Mobile : filtres rapides dans la feuille (année, cycles, parcours de 3e année, lieu), les mêmes que sur ordinateur.
+    const quickMenu = (key) => {
+      const m = MENUS[key];
+      const value = m.summary ? m.summary() : state[key] !== 'all' ? m.label(state[key]) : null;
       return `
-        <button type="button" class="chip${set ? ' is-set' : ''}" data-menu="${key}" aria-haspopup="listbox" aria-expanded="false" aria-label="${MENUS[key].name} : ${esc(MENUS[key].label(state[key]))}">
-          ${icon ? svg('lead', icon) : ''}<span>${set ? esc(MENUS[key].label(state[key])) : MENUS[key].name}</span>${svg('chevron', ICONS.chevronDown)}
+        <button type="button" class="chip${value ? ' is-set' : ''}" data-menu="${key}" aria-haspopup="listbox" aria-expanded="false" aria-label="${m.heading || m.name} : ${esc(value || m.label('all'))}">
+          <span>${esc(value || m.name)}</span>${svg('chevron', ICONS.chevronDown)}
         </button>`;
     };
     const quickCycle = (k) => `
       <button type="button" class="chip" data-cycle="${k}" aria-pressed="${state.cycles.has(k)}" style="--cycle: var(--c-${k})">
         <span class="dot"></span>${CYCLES[k].short}
       </button>`;
+    // La capsule des parcours suit celle de la 3e année, dont elle affine le filtre.
+    const quickCycles = Object.keys(CYCLES).map((k) => quickCycle(k) + (k === 'ing3' && PARCOURS.length ? quickMenu('parcours') : '')).join('');
     $$('[data-quick-filters]').forEach((el) => {
       const scroll = el.scrollLeft;
-      el.innerHTML = quickMenu('annee') + Object.keys(CYCLES).map(quickCycle).join('') + quickMenu('lieu');
+      el.innerHTML = quickMenu('annee') + quickCycles + quickMenu('lieu');
       el.scrollLeft = scroll;
     });
 
@@ -826,6 +861,8 @@
     menu.hidden = false;
     menuTrigger = trigger;
     trigger.setAttribute('aria-expanded', 'true');
+    // Une capsule à moitié hors de la rangée des filtres rapides y défile d'abord en entier.
+    if (trigger.closest('[data-quick-filters]')) trigger.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 
     // Sous le déclencheur, au-dessus s’il manque de place ; aligné à droite
     // dans une ligne large, à gauche sous une capsule.
@@ -847,9 +884,26 @@
     if (right) menu.style.right = `${window.innerWidth - r.right}px`;
     else menu.style.left = `${Math.max(margin, Math.min(r.left, window.innerWidth - width - margin))}px`;
 
-    const current = $('[aria-selected="true"]', menu);
+    const current = $('[aria-selected="true"]', menu) || $('.menu-item', menu);
     current.focus({ preventScroll: true });
     menu.scrollTop = Math.max(0, current.offsetTop + current.offsetHeight - menu.clientHeight + 6);
+  }
+  // Choix multiple : le menu reste ouvert, redessiné sur place ; la capsule redessinée par update() redevient son déclencheur.
+  function pickInMenu(key, v) {
+    const box = menuTrigger.parentNode;
+    MENUS[key].pick(v);
+    update();
+    menuTrigger = $(`[data-menu="${key}"]`, box) || menuTrigger;
+    menuTrigger.setAttribute('aria-expanded', 'true');
+    const menu = $('[data-options-menu]');
+    const scroll = menu.scrollTop;
+    const width = menu.offsetWidth;
+    renderMenu(key);
+    // Le choix en gras change la largeur : le menu ne rétrécit pas, et reste dans l'écran s'il s'élargit.
+    menu.style.minWidth = `${Math.max(width, menu.offsetWidth)}px`;
+    if (menu.dataset.align === 'left') menu.style.left = `${Math.max(16, Math.min(parseFloat(menu.style.left), window.innerWidth - menu.offsetWidth - 16))}px`;
+    menu.scrollTop = scroll;
+    $(`[data-option="${CSS.escape(v)}"]`, menu).focus({ preventScroll: true });
   }
   $('[data-options-menu]').addEventListener('keydown', (e) => {
     const items = $$('.menu-item', e.currentTarget);
@@ -881,7 +935,9 @@
     }
     if (!t.closest('[data-layers-menu]') && t.dataset.action !== 'layers') toggleLayersMenu(false);
     if (t.dataset.option !== undefined) {
-      state[menuTrigger.dataset.menu] = t.dataset.option;
+      const key = menuTrigger.dataset.menu;
+      if (MENUS[key].multi) return pickInMenu(key, t.dataset.option);
+      state[key] = t.dataset.option;
       closeMenu(true);
       return update();
     }
