@@ -2,18 +2,15 @@
 
 Carte interactive des stages réalisés par les étudiantes et étudiants de Géodata Paris, de 2016-2017 à 2024-2025. Elle reprend la [carte publiée sur macarte](https://macarte.ign.fr/carte/R3wixb/Carte-des-stages-edition-2025) et ajoute :
 
-- un filtre par année ;
-- un filtre par cycle (ingénieur 2e et 3e année, géomètre-géomaticien, licence professionnelle), qui sert aussi de légende avec le nombre de stages ;
-- un filtre par type de structure : laboratoire, entreprise ou service public ;
-- un filtre France ou étranger, et un filtre par parcours de 3e année ;
+- des filtres regroupés dans le panneau : année, cycle — qui sert aussi de légende avec le nombre de stages —, parcours de 3e année (sous-catégories à cocher sous « Ingénieur 3e année »), type de structure (laboratoire, entreprise, service public), lieu (une liste déroulante : partout, tous les pays sauf la France, ou un pays précis) et tags (10 techniques comme SIG ou télédétection, 9 domaines comme eau ou urbanisme) ;
 - une recherche par ville, structure ou sujet ;
-- la liste des stages affichés, synchronisée avec la carte ;
+- la liste des stages affichés, synchronisée avec la carte — sur ordinateur, elle s'ouvre par un bouton ou en appuyant sur Entrée dans la recherche, dans un panneau à côté des filtres ;
 - une fiche par stage, avec un lien à partager ;
 - le regroupement des points proches, avec la part de chaque cycle ;
 - l’export CSV des stages affichés ;
 - le choix du fond : plan clair aux couleurs du site (par défaut, clair ou sombre selon le système), Plan IGN ou photographies aériennes.
 
-Les filtres sont enregistrés dans l’adresse de la page (`#annee=2024-2025&structure=labo`, par exemple) : un lien copié ouvre la carte dans le même état.
+Les filtres sont enregistrés dans l’adresse de la page (`#annee=2024-2025&tags=sig,eau`, par exemple) : un lien copié ouvre la carte dans le même état.
 
 ## Lancer le site
 
@@ -38,13 +35,17 @@ Au passage, il :
 - écarte les points masqués sur la carte d’origine (cycles hors légende) ;
 - n’exporte pas les noms des étudiantes et étudiants ;
 - harmonise les noms de pays et corrige les accents et apostrophes abîmés ;
-- déduit le type de structure du nom de l’organisme, qui n’est pas renseigné dans la source.
+- déduit le type de structure du nom de l'organisme, qui n'est pas renseigné dans la source ;
+- attribue à chaque stage des tags, d'après son sujet : 10 techniques (géodésie, cartographie, télédétection, SIG, photogrammétrie, lasergrammétrie, topométrie, dev, modélisation 3D, IA) et 9 domaines (eau, environnement, urbanisme, agriculture, littoral, mobilité, patrimoine, risques, énergie).
 
 Ce classement automatique peut se tromper. Pour corriger une structure, ajoutez son nom exact dans `data/structures-corrections.json` avec `labo`, `entreprise` ou `public`, puis relancez le script.
 
+Le vocabulaire des tags vit dans `scripts/tags.mjs`. Après l'avoir modifié, `node scripts/retag.mjs` recalcule les tags de `data/stages.json` sans retélécharger la source.
 ## Fichiers
 
 - `index.html`, `assets/style.css`, `assets/app.js` : le site (Leaflet, Leaflet.markercluster et MapLibre, chargés depuis jsDelivr).
 - `assets/basemap.js` : le style du plan clair (tuiles vectorielles OpenFreeMap, données OpenStreetMap).
 - `data/stages.json` : les stages, produits par le script.
 - `scripts/build-data.mjs` : récupération et nettoyage des données.
+- `scripts/tags.mjs` : le vocabulaire des tags des stages (motifs cherchés dans le sujet).
+- `scripts/retag.mjs` : recalcule les tags sans retélécharger la source.

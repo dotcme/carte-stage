@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tagsFor } from './tags.mjs';
 
 const MAP_ID = 'R3wixb';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -103,6 +104,7 @@ features.forEach((f, i) => {
   const lat = Number(p.latitude), lon = Number(p.longitude);
   if (!cycle || !Number.isFinite(lat) || !Number.isFinite(lon)) return;
   const org = clean(p.entrepriseNom);
+  const sujet = clean(p.Sujet);
   const detail = clean(p['Cycle_détail']).toUpperCase().replace(/\s+/g, '');
   const annee = academicYear(p.Annee);
   stages.push({
@@ -111,13 +113,14 @@ features.forEach((f, i) => {
     cycle,
     type: clean(p.TypeStage) || null,
     parcours: cycle === 'ing3' ? PARCOURS[detail] || null : null,
-    sujet: clean(p.Sujet),
+    sujet,
     org,
     structure: structure(org),
     ville: clean(p.entrepriseVille).replace(/^\S/, (c) => c.toUpperCase()),
     pays: COUNTRY_FIX[org] || country(p.entreprisePays),
     lat: Math.round(lat * 1e5) / 1e5,
-    lon: Math.round(lon * 1e5) / 1e5
+    lon: Math.round(lon * 1e5) / 1e5,
+    tags: tagsFor(sujet)
   });
 });
 
