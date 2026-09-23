@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
   <title>Carte des stages</title>
   <meta name="description" content="Stages réalisés par les étudiantes et étudiants de Géodata Paris, par année, cycle et type de structure.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -18,7 +20,7 @@
     <div class="glass searchbar">
       <label class="search">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
-        <input type="search" data-search placeholder="Ville, structure, sujet" aria-label="Rechercher un stage" autocomplete="off">
+        <input type="search" data-search placeholder="Ville, structure, sujet" aria-label="Rechercher un stage" autocomplete="off" enterkeyhint="search">
       </label>
       <button type="button" class="icon-button" data-action="open-filters" aria-label="Filtres">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
@@ -27,22 +29,25 @@
     </div>
   </div>
 
-  <!-- Panneau : liste et légende (feuille en bas sur mobile) -->
-  <aside class="panel" data-sheet="peek" aria-label="Stages">
-    <button type="button" class="grabber" data-action="toggle-sheet" aria-label="Agrandir la liste"><span></span></button>
+  <!-- Panneau : filtres sur ordinateur, feuille en bas avec la liste sur mobile -->
+  <aside class="panel" aria-label="Stages">
+    <button type="button" class="grabber" data-action="toggle-sheet" data-sheet-handle aria-label="Agrandir la liste"><span></span></button>
 
     <div class="panel-view" data-view="list">
-      <header class="panel-header">
+      <!-- Bureau -->
+      <header class="panel-header desktop-only">
         <h1>Stages</h1>
-        <p data-summary></p>
+        <p data-subtitle>Géodata Paris</p>
       </header>
+      <dl class="stats desktop-only" data-stats></dl>
       <label class="search field desktop-only">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
         <input type="search" data-search placeholder="Ville, structure, sujet" aria-label="Rechercher un stage" autocomplete="off">
       </label>
       <!-- Tous les filtres, bureau ; la feuille mobile en reprend les mêmes sections -->
-      <div class="filters desktop-only">
+      <div class="filters scroll-fade desktop-only" data-scroll-fade>
         <button type="button" class="card select-row" data-menu="annee" aria-haspopup="listbox" aria-expanded="false">
+          <svg class="icon lead" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
           <span class="row-label">Année</span>
           <span class="select-value" data-menu-value="annee">Toutes les années</span>
           <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
@@ -56,6 +61,7 @@
           <div class="card" role="group" aria-label="Structure" data-structure-rows></div>
         </section>
         <button type="button" class="card select-row" data-menu="lieu" aria-haspopup="listbox" aria-expanded="false">
+          <svg class="icon lead" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.1 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.1-3.6-8.5s1.2-6.2 3.6-8.5z"/></svg>
           <span class="row-label">Lieu</span>
           <span class="select-value" data-menu-value="lieu">Partout</span>
           <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
@@ -73,26 +79,38 @@
         </section>
       </div>
       <!-- Bureau : ouvre la liste des stages dans un panneau adjacent -->
-      <button type="button" class="prominent results-button desktop-only" data-action="toggle-results" aria-expanded="false" aria-controls="results">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-        <span data-results-label>Afficher les stages</span>
-      </button>
-      <div class="cycle-chips mobile-only" role="group" aria-label="Cycle" data-cycle-chips></div>
-      <div class="results-header mobile-only">
-        <h2 data-count></h2>
+      <footer class="panel-footer desktop-only">
+        <button type="button" class="plain" data-action="reset" hidden>Réinitialiser</button>
+        <button type="button" class="prominent results-button" data-action="toggle-results" aria-expanded="false" aria-controls="results">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          <span data-results-label>Afficher les stages</span>
+        </button>
+      </footer>
+
+      <!-- Mobile : en-tête de la feuille, filtres rapides et liste -->
+      <header class="sheet-top mobile-only" data-sheet-handle>
+        <div class="sheet-title">
+          <h2 data-count></h2>
+          <p data-summary></p>
+        </div>
         <div class="results-actions">
           <button type="button" class="plain" data-action="reset" hidden>Réinitialiser</button>
-          <button type="button" class="plain" data-action="export">Exporter</button>
+          <button type="button" class="round-button" data-action="export" aria-label="Exporter en CSV">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg>
+          </button>
         </div>
-      </div>
+      </header>
+      <div class="quick-filters mobile-only" role="group" aria-label="Filtres rapides" data-quick-filters></div>
       <div class="card list mobile-only" data-list></div>
     </div>
 
     <div class="panel-view" data-view="detail" hidden>
-      <button type="button" class="plain back" data-action="close-detail">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Stages
-      </button>
-      <div data-detail></div>
+      <div class="detail-top" data-sheet-handle>
+        <button type="button" class="plain back" data-action="close-detail">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Stages
+        </button>
+      </div>
+      <div class="detail-scroll" data-detail></div>
     </div>
   </aside>
 
@@ -101,8 +119,9 @@
     <header class="results-header">
       <h2 data-count></h2>
       <div class="results-actions">
-        <button type="button" class="plain" data-action="reset" hidden>Réinitialiser</button>
-        <button type="button" class="plain" data-action="export">Exporter</button>
+        <button type="button" class="plain with-icon" data-action="export">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg>Exporter
+        </button>
         <button type="button" class="close" data-action="close-results" aria-label="Fermer la liste">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
@@ -116,13 +135,13 @@
 
   <!-- Outils de carte -->
   <div class="glass tools" role="group" aria-label="Carte">
-    <button type="button" class="icon-button" data-action="zoom-in" aria-label="Zoomer">
+    <button type="button" class="icon-button zoom" data-action="zoom-in" aria-label="Zoomer">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
     </button>
-    <button type="button" class="icon-button" data-action="zoom-out" aria-label="Dézoomer">
+    <button type="button" class="icon-button zoom" data-action="zoom-out" aria-label="Dézoomer">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
     </button>
-    <span class="tools-sep" aria-hidden="true"></span>
+    <span class="tools-sep zoom" aria-hidden="true"></span>
     <button type="button" class="icon-button" data-action="fit" aria-label="Voir tous les stages affichés">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/></svg>
     </button>
@@ -140,15 +159,21 @@
   <!-- Filtres, mobile -->
   <div class="scrim" data-filters-scrim hidden></div>
   <section class="filters-sheet" data-filters-sheet aria-label="Filtres" hidden>
-    <span class="grabber-bar" aria-hidden="true"></span>
-    <header class="sheet-header">
-      <h1>Filtres</h1>
-      <button type="button" class="close" data-action="close-filters" aria-label="Fermer">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-      </button>
-    </header>
-    <div class="sheet-body">
+    <div class="sheet-grip" data-filters-handle>
+      <span class="grabber-bar" aria-hidden="true"></span>
+      <header class="sheet-header">
+        <h1>Filtres</h1>
+        <div class="sheet-header-actions">
+          <button type="button" class="plain" data-action="reset">Réinitialiser</button>
+          <button type="button" class="close" data-action="close-filters" aria-label="Fermer">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+      </header>
+    </div>
+    <div class="sheet-body scroll-fade" data-scroll-fade>
       <button type="button" class="card select-row" data-menu="annee" aria-haspopup="listbox" aria-expanded="false">
+        <svg class="icon lead" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
         <span class="row-label">Année</span>
         <span class="select-value" data-menu-value="annee">Toutes les années</span>
         <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
@@ -162,6 +187,7 @@
         <div class="card" role="group" aria-label="Structure" data-structure-rows></div>
       </section>
       <button type="button" class="card select-row" data-menu="lieu" aria-haspopup="listbox" aria-expanded="false">
+        <svg class="icon lead" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.1 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.1-3.6-8.5s1.2-6.2 3.6-8.5z"/></svg>
         <span class="row-label">Lieu</span>
         <span class="select-value" data-menu-value="lieu">Partout</span>
         <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>
@@ -180,7 +206,6 @@
     </div>
     <footer class="sheet-footer">
       <button type="button" class="prominent" data-action="close-filters" data-apply></button>
-      <button type="button" class="plain" data-action="reset">Réinitialiser</button>
     </footer>
   </section>
 
@@ -192,6 +217,8 @@
     <p>Fond de carte : plan clair d’après OpenStreetMap (tuiles OpenFreeMap), Plan IGN et photographies aériennes de la Géoplateforme.</p>
     <form method="dialog"><button class="prominent" type="submit">Fermer</button></form>
   </dialog>
+
+  <div class="toast" role="status" aria-live="polite" data-toast hidden></div>
 
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
