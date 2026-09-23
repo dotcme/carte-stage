@@ -488,7 +488,9 @@ a { color: var(--accent); }
 /* ---------- Marqueurs ---------- */
 .pin { background: transparent; border: 0; }
 .pin svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.3)); overflow: visible; }
-.pin path { stroke: var(--bg-elevated); stroke-width: 1.5; } /* contour du même gris que le centre des groupes en sombre */
+/* Contour et rond central des pins : blancs en clair, du même gris que le centre des groupes en sombre */
+.pin path { stroke: var(--bg-elevated); stroke-width: 1.5; }
+.pin-dot { fill: var(--bg-elevated); }
 .pin--ing2 path { fill: var(--c-ing2); }
 .pin--ing3 path { fill: var(--c-ing3); }
 .pin--geo path { fill: var(--c-geo); }

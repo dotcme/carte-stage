@@ -45,7 +45,7 @@
     public: '<path d="M3.5 9L12 4.5 20.5 9"/><path d="M4.5 20h15M6.5 11.5v5.5M10.2 11.5v5.5M13.8 11.5v5.5M17.5 11.5v5.5"/>'
   };
   const PIN_PATH = 'M13 1C6.4 1 1 6.2 1 12.7c0 8.6 10.3 18.9 11.2 19.8a1.1 1.1 0 0 0 1.6 0C14.7 31.6 25 21.3 25 12.7 25 6.2 19.6 1 13 1z';
-  const pinSvg = (cls) => `<svg class="${cls}" viewBox="0 0 26 34" aria-hidden="true"><path d="${PIN_PATH}"/><circle cx="13" cy="12.5" r="4.2" fill="#fff"/></svg>`;
+  const pinSvg = (cls) => `<svg class="${cls}" viewBox="0 0 26 34" aria-hidden="true"><path d="${PIN_PATH}"/><circle class="pin-dot" cx="13" cy="12.5" r="4.2"/></svg>`;
 
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
