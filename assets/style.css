@@ -43,37 +43,38 @@
   --sheet-peek: 156px; /* hauteur de la feuille mobile repliée, reprise par app.js */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #000000;
-    --bg-sheet: #1c1c1e;
-    --bg-elevated: #2c2c2e;
-    --label: #ffffff;
-    --label-secondary: #939398;
-    --label-glass-secondary: #d1d1d9;
-    --separator: rgba(84, 84, 88, 0.65);
-    --control-edge: #75757a;
-    --fill-control: rgba(118, 118, 128, 0.24);
-    --fill-pressed: rgba(255, 255, 255, 0.12);
-    --thumb: #5b5b60;
-    --accent: #369cfe;
-    --accent-fill: #0378d3;
-    --accent-tint: #16334b;
-    --glass-regular: rgba(32, 32, 36, 0.80);
-    --glass-edge: rgba(255, 255, 255, 0.36);
-    --glass-highlight: rgba(255, 255, 255, 0.55);
-    --glass-lens: rgba(255, 255, 255, 0.14);
-    --glass-opaque: #26262a;
-    --scrim: rgba(0, 0, 0, 0.48);
-    --shadow-glass: 0 8px 24px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.30);
-    --shadow-knob: 0 3px 8px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.30);
-    --shadow-sheet: 0 -2px 30px rgba(0, 0, 0, 0.6);
-    --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
-    --c-ing2: #e84aff;
-    --c-ing3: #00d2e0;
-    --c-geo: #ff9230;
-    --c-lpro: #ff625d;
-  }
+/* Sombre : choisi dans le menu des couches, ou suivi du système (data-theme posé dans index.html). */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --bg-sheet: #1c1c1e;
+  --bg-elevated: #2c2c2e;
+  --label: #ffffff;
+  --label-secondary: #939398;
+  --label-glass-secondary: #d1d1d9;
+  --separator: rgba(84, 84, 88, 0.65);
+  --control-edge: #75757a;
+  --fill-control: rgba(118, 118, 128, 0.24);
+  --fill-pressed: rgba(255, 255, 255, 0.12);
+  --thumb: #5b5b60;
+  --accent: #369cfe;
+  --accent-fill: #0378d3;
+  --accent-tint: #16334b;
+  --glass-regular: rgba(32, 32, 36, 0.80);
+  --glass-edge: rgba(255, 255, 255, 0.36);
+  --glass-highlight: rgba(255, 255, 255, 0.55);
+  --glass-lens: rgba(255, 255, 255, 0.14);
+  --glass-opaque: #26262a;
+  --scrim: rgba(0, 0, 0, 0.48);
+  --shadow-glass: 0 8px 24px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.30);
+  --shadow-knob: 0 3px 8px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.30);
+  --shadow-sheet: 0 -2px 30px rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --c-ing2: #e84aff;
+  --c-ing3: #00d2e0;
+  --c-geo: #ff9230;
+  --c-lpro: #ff625d;
 }
 
 * { box-sizing: border-box; }
@@ -89,7 +90,7 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 #map { position: fixed; inset: 0; background: #d6e6f2; }
-@media (prefers-color-scheme: dark) { #map { background: #0f1d2a; } }
+:root[data-theme="dark"] #map { background: #0f1d2a; }
 [hidden] { display: none !important; }
 h1, h2, h3, p { margin: 0; }
 button, input, select { font: inherit; color: inherit; }

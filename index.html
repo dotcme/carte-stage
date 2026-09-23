@@ -3,8 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f2f2f7">
+  <script>
+    // Apparence choisie dans le menu des couches (clair ou sombre), sinon celle du système ; posée avant l'affichage.
+    (function () {
+      var choice = null;
+      try { choice = localStorage.getItem('apparence'); } catch (e) { /* stockage indisponible */ }
+      var dark = choice === 'dark' || (choice !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      if (dark) document.querySelector('meta[name="theme-color"]').content = '#000000';
+    })();
+  </script>
   <title>Carte des stages</title>
   <meta name="description" content="Stages réalisés par les étudiantes et étudiants de Géodata Paris, par année, cycle et type de structure.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -145,14 +154,14 @@
     <button type="button" class="icon-button" data-action="fit" aria-label="Voir tous les stages affichés">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/></svg>
     </button>
-    <button type="button" class="icon-button" data-action="layers" aria-label="Couches de la carte" aria-haspopup="true" aria-expanded="false">
+    <button type="button" class="icon-button" data-action="layers" aria-label="Fond de carte et apparence" aria-haspopup="true" aria-expanded="false">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l8.5 4.5L12 13 3.5 8.5z"/><path d="M3.5 12.5L12 17l8.5-4.5"/><path d="M3.5 16.5L12 21l8.5-4.5"/></svg>
     </button>
     <button type="button" class="icon-button" data-action="about" aria-label="À propos">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r="0.6" fill="currentColor"/></svg>
     </button>
   </div>
-  <div class="glass layers-menu" role="menu" aria-label="Couches de la carte" data-layers-menu hidden></div>
+  <div class="glass layers-menu" role="menu" aria-label="Fond de carte et apparence" data-layers-menu hidden></div>
 
   <div class="glass menu" role="listbox" data-options-menu hidden></div>
 

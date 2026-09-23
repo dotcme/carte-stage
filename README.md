@@ -10,7 +10,8 @@ Carte interactive des stages réalisés par les étudiantes et étudiants de Gé
 - une fiche par stage : ses tags (un toucher filtre la carte), les autres stages de la même structure, et deux boutons, « Partager » (la feuille de partage du téléphone, ou le lien copié sur ordinateur) et « Centrer » ;
 - le regroupement des points proches, avec la part de chaque cycle ;
 - l’export CSV des stages affichés ;
-- le choix du fond : plan clair aux couleurs du site (par défaut, clair ou sombre selon le système), Plan IGN ou photographies aériennes.
+- le choix du fond : plan clair aux couleurs du site, Plan IGN ou photographies aériennes ;
+- le choix de l’apparence, dans le même menu : automatique (celle du système, par défaut), claire ou sombre ; le choix est gardé dans le navigateur.
 
 Les filtres sont enregistrés dans l’adresse de la page (`#annee=2024-2025&tags=sig,eau`, par exemple) : un lien copié ouvre la carte dans le même état.
 

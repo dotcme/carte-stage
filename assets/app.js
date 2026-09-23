@@ -90,17 +90,41 @@
     return layer;
   }
 
-  // Plan clair : fond vectoriel aux couleurs de Lucent (assets/basemap.js), clair ou sombre selon le système.
+  // Apparence : automatique (celle du système), claire ou sombre ; le choix est gardé dans le navigateur.
+  const APPEARANCES = [
+    { id: 'auto', label: 'Automatique' },
+    { id: 'light', label: 'Clair' },
+    { id: 'dark', label: 'Sombre' }
+  ];
   const DARK = window.matchMedia('(prefers-color-scheme: dark)');
-  const theme = () => (DARK.matches ? 'dark' : 'light');
+  let appearance = 'auto';
+  try { appearance = localStorage.getItem('apparence') || 'auto'; } catch (e) { /* stockage indisponible */ }
+  if (!APPEARANCES.some((a) => a.id === appearance)) appearance = 'auto';
+  const theme = () => (appearance === 'auto' ? (DARK.matches ? 'dark' : 'light') : appearance);
+
+  // Plan clair : fond vectoriel aux couleurs de Lucent (assets/basemap.js), dans l'apparence choisie.
   const vector = L.maplibreGL({
     style: window.lucentBasemapStyle(theme()),
     attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> ' + OSM_ATTRIBUTION
   });
-  DARK.addEventListener('change', () => {
+  function applyTheme() {
+    const t = theme();
+    if (document.documentElement.dataset.theme === t) return;
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name="theme-color"]').content = t === 'dark' ? '#000000' : '#f2f2f7';
     const gl = vector.getMaplibreMap && vector.getMaplibreMap();
-    if (gl) gl.setStyle(window.lucentBasemapStyle(theme()));
-  });
+    if (gl) gl.setStyle(window.lucentBasemapStyle(t));
+    clusters.refreshClusters(); // les parts de cycle des groupes prennent les couleurs du thème
+  }
+  function setAppearance(id) {
+    appearance = id;
+    try {
+      if (id === 'auto') localStorage.removeItem('apparence');
+      else localStorage.setItem('apparence', id);
+    } catch (e) { /* le choix vaut pour cette visite seulement */ }
+    applyTheme();
+  }
+  DARK.addEventListener('change', () => { if (appearance === 'auto') applyTheme(); });
 
   const BASES = [
     { id: 'clair', label: 'Plan clair', layer: vector },
@@ -760,7 +784,9 @@
       </button>`;
     $('[data-layers-menu]').innerHTML =
       '<div class="menu-heading">Fond de carte</div>' +
-      BASES.map((b) => item(base === b, `data-base="${b.id}"`, b.label)).join('');
+      BASES.map((b) => item(base === b, `data-base="${b.id}"`, b.label)).join('') +
+      '<div class="menu-sep" role="separator"></div><div class="menu-heading">Apparence</div>' +
+      APPEARANCES.map((a) => item(appearance === a.id, `data-appearance="${a.id}"`, a.label)).join('');
   }
   function toggleLayersMenu(open) {
     const menu = $('[data-layers-menu]');
@@ -883,6 +909,10 @@
     if (t.dataset.base) {
       const next = BASES.find((b) => b.id === t.dataset.base);
       if (next !== base) { map.removeLayer(base.layer); base = next; base.layer.addTo(map); }
+      return toggleLayersMenu(false);
+    }
+    if (t.dataset.appearance) {
+      setAppearance(t.dataset.appearance);
       return toggleLayersMenu(false);
     }
 
