@@ -45,7 +45,7 @@
     public: '<path d="M3.5 9L12 4.5 20.5 9"/><path d="M4.5 20h15M6.5 11.5v5.5M10.2 11.5v5.5M13.8 11.5v5.5M17.5 11.5v5.5"/>'
   };
   const PIN_PATH = 'M13 1C6.4 1 1 6.2 1 12.7c0 8.6 10.3 18.9 11.2 19.8a1.1 1.1 0 0 0 1.6 0C14.7 31.6 25 21.3 25 12.7 25 6.2 19.6 1 13 1z';
-  const pinSvg = (cls) => `<svg class="${cls}" viewBox="0 0 26 34" aria-hidden="true"><path d="${PIN_PATH}"/><circle cx="13" cy="12.5" r="4.2" fill="#fff"/></svg>`;
+  const pinSvg = (cls) => `<svg class="${cls}" viewBox="0 0 26 34" aria-hidden="true"><path d="${PIN_PATH}"/><circle class="pin-dot" cx="13" cy="12.5" r="4.2"/></svg>`;
 
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
@@ -132,8 +132,15 @@
     { id: 'plan', label: 'Plan IGN', layer: withFallback(geopf('GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2', 'image/png', 19)) },
     { id: 'ortho', label: 'Photographies aériennes', layer: withFallback(geopf('ORTHOIMAGERY.ORTHOPHOTOS', 'image/jpeg', 19)) }
   ];
-  let base = BASES[0];
-  base.layer.addTo(map);
+  let base = null;
+  // Le fond choisi est noté sur <html> : les pins et les groupes gardent un centre blanc sur le Plan IGN et les photos (style.css).
+  function setBase(next) {
+    if (base) map.removeLayer(base.layer);
+    base = next;
+    base.layer.addTo(map);
+    document.documentElement.dataset.base = base.id;
+  }
+  setBase(BASES[0]);
   map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
 
   const icons = {};
@@ -974,7 +981,7 @@
     }
     if (t.dataset.base) {
       const next = BASES.find((b) => b.id === t.dataset.base);
-      if (next !== base) { map.removeLayer(base.layer); base = next; base.layer.addTo(map); }
+      if (next !== base) setBase(next);
       return toggleLayersMenu(false);
     }
     if (t.dataset.appearance) {
