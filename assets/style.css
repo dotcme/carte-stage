@@ -503,8 +503,9 @@ a { color: var(--accent); }
   box-shadow: var(--shadow-knob);
   transition: transform 150ms var(--ease-out);
 }
+/* Centre du groupe : blanc en clair, gris foncé en sombre, pour ne pas trancher sur le fond sombre */
 .cluster span {
-  width: 32px; height: 32px; border-radius: 999px; background: #ffffff; color: #000000;
+  width: 32px; height: 32px; border-radius: 999px; background: var(--bg-elevated); color: var(--label);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-rounded); font-size: 0.8125rem; font-weight: 700; font-variant-numeric: tabular-nums;
 }
