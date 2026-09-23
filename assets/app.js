@@ -849,8 +849,9 @@
       onMove(e.clientY - done.y, done);
       swallowClick = true;
       setTimeout(() => { swallowClick = false; }, 0);
-      onEnd(e.clientY - done.y, done);
+      // Transitions rétablies avant de caler la feuille : elle part de là où le doigt l'a laissée.
       el.classList.remove('dragging');
+      onEnd(e.clientY - done.y, done);
     };
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
@@ -863,7 +864,6 @@
   }, (dy, d) => {
     if (DESKTOP.matches) return;
     const h = panel.getBoundingClientRect().height;
-    panel.style.height = '';
     const H = sheetHeights();
     const stops = state.sel !== null
       ? [['close', H.peek], ['detail', H.detail], ['full', H.full]]
@@ -874,6 +874,8 @@
     else target = stops.reduce((a, b) => (Math.abs(b[1] - h) < Math.abs(a[1] - h) ? b : a));
     if (target[0] === 'close') setSelection(null);
     else setSheet(target[0]);
+    // En dernier : lire un style entre-temps figerait la feuille sur son ancienne hauteur, sans transition.
+    panel.style.height = '';
   });
 
   const filtersSheet = $('[data-filters-sheet]');
