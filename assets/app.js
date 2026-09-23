@@ -68,7 +68,7 @@
 
   const DEFAULTS = { annee: 'all', cycles: Object.keys(CYCLES), structures: Object.keys(STRUCTURES), lieu: 'all', q: '' };
   // Parcours : tous cochés (en décocher un l'exclut) ; tags : aucun coché (en cocher un inclut, OU entre eux).
-  // Le filtre Lieu : « all » (partout), un choix de LIEUX (la France hexagonale, ou tout sauf elle) ou un pays.
+  // Le filtre Lieu : « all » (partout), un choix de LIEUX (la France hexagonale, ou l'étranger et l'outre-mer) ou un pays.
   const state = { annee: 'all', cycles: new Set(DEFAULTS.cycles), structures: new Set(DEFAULTS.structures), lieu: 'all', parcours: new Set(), tags: new Set(), q: '', sel: null };
 
   /* ---------- Carte ---------- */
@@ -199,7 +199,7 @@
   function isHexagone(s) { return s.pays === 'France' && inHexagone(s); }
   // Choix du filtre Lieu autres qu'un pays, dans l'ordre du menu.
   const LIEUX = {
-    'hors-hexagone': { label: 'Tout sauf la France hexagonale', test: (s) => !isHexagone(s) },
+    'hors-hexagone': { label: 'Étranger et outre-mer', test: (s) => !isHexagone(s) },
     hexagone: { label: 'France hexagonale', test: isHexagone }
   };
   const lieuChoice = (v) => (Object.hasOwn(LIEUX, v) ? LIEUX[v] : null);
