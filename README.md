@@ -1,6 +1,6 @@
 # Carte des stages
 
-Carte interactive des stages réalisés par les étudiantes et étudiants de Géodata Paris, de 2016-2017 à 2024-2025. Elle reprend la [carte publiée sur macarte](https://macarte.ign.fr/carte/R3wixb/Carte-des-stages-edition-2025) et ajoute :
+Carte interactive des stages réalisés par les étudiantes et étudiants de Géodata Paris, de 2016-2017 à 2025-2026. Elle reprend la [carte publiée sur macarte](https://macarte.ign.fr/carte/R3wixb/Carte-des-stages-edition-2025) et ajoute :
 
 - des filtres regroupés dans le panneau : année, cycle — qui sert aussi de légende avec le nombre de stages —, parcours de 3e année (sous-catégories à cocher sous « Ingénieur 3e année »), type de structure (laboratoire, entreprise, service public), lieu (une liste déroulante : partout ; étranger et outre-mer, puis France hexagonale, Corse comprise ; puis les autres pays par ordre alphabétique — un stage noté « France » mais situé outre-mer ne compte pas dans la France hexagonale) et tags (10 techniques comme SIG ou télédétection, 9 domaines comme eau ou urbanisme) ;
 - une recherche par ville, structure ou sujet ;
@@ -41,6 +41,10 @@ Au passage, il :
 - déduit le type de structure du nom de l'organisme, qui n'est pas renseigné dans la source ;
 - attribue à chaque stage des tags, d'après son sujet : 10 techniques (géodésie, cartographie, télédétection, SIG, photogrammétrie, lasergrammétrie, topométrie, dev, modélisation 3D, IA) et 9 domaines (eau, environnement, urbanisme, agriculture, littoral, mobilité, patrimoine, risques, énergie).
 
+Les stages absents de macarte (ceux de 2025-2026, par exemple) sont saisis à la main dans `data/stages-ajouts.json`, au même format que `data/stages.json`, sans les tags. Le script les ajoute à chaque reconstruction.
+
+Les stages absents de macarte (ceux de 2025-2026, par exemple) sont saisis à la main dans `data/stages-ajouts.json`, au même format que `data/stages.json`, sans les tags. Le script les ajoute à chaque reconstruction.
+
 Ce classement automatique peut se tromper. Pour corriger une structure, ajoutez son nom exact dans `data/structures-corrections.json` avec `labo`, `entreprise` ou `public`, puis relancez le script.
 
 Le vocabulaire des tags vit dans `scripts/tags.mjs`. Après l'avoir modifié, `node scripts/retag.mjs` recalcule les tags de `data/stages.json` sans retélécharger la source.
@@ -51,6 +55,8 @@ Le vocabulaire des tags vit dans `scripts/tags.mjs`. Après l'avoir modifié, `n
 - `favicon.ico`, `assets/favicon.svg`, `assets/apple-touch-icon.png` : l’icône du site, une carte pliée aux couleurs du logo.
 - `assets/banner.png` : la bannière de partage (1200 × 630).
 - `data/stages.json` : les stages, produits par le script.
+- `data/stages-ajouts.json` : les stages ajoutés à la main, repris par le script.
+- `data/stages-ajouts.json` : les stages ajoutés à la main, repris par le script.
 - `scripts/build-data.mjs` : récupération et nettoyage des données.
 - `scripts/tags.mjs` : le vocabulaire des tags des stages (motifs cherchés dans le sujet).
 - `scripts/retag.mjs` : recalcule les tags sans retélécharger la source.

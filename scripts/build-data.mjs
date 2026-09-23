@@ -124,6 +124,11 @@ features.forEach((f, i) => {
   });
 });
 
+// Stages ajoutés à la main, absents de la carte d'origine : ils survivent à chaque reconstruction.
+let AJOUTS = [];
+try { AJOUTS = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'stages-ajouts.json'), 'utf8')); } catch {}
+AJOUTS.forEach((s) => stages.push({ ...s, structure: s.structure || structure(s.org), tags: tagsFor(s.sujet) }));
+
 stages.sort((a, b) => b.annee.localeCompare(a.annee) || a.org.localeCompare(b.org, 'fr'));
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify({ source: `https://macarte.ign.fr/carte/${MAP_ID}`, generated: new Date().toISOString().slice(0, 10), stages }));

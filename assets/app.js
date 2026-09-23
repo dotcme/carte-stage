@@ -1184,7 +1184,9 @@
       });
       YEARS = [...new Set(STAGES.map((s) => s.annee))].filter(Boolean).sort().reverse();
       // Parcours encore proposés l'année la plus récente en tête (ordre alpha) ; les parcours disparus (ex. DeSIGeo) en fin de liste.
-      const activeParcours = new Set(STAGES.filter((s) => s.annee === YEARS[0]).map((s) => s.parcours).filter(Boolean));
+      // L'année de référence est la plus récente qui a des parcours : une année en cours peut n'avoir encore que des stages de 2e année.
+      const parcoursYear = YEARS.find((y) => STAGES.some((s) => s.annee === y && s.parcours));
+      const activeParcours = new Set(STAGES.filter((s) => s.annee === parcoursYear).map((s) => s.parcours).filter(Boolean));
       PARCOURS = [...new Set(STAGES.map((s) => s.parcours).filter(Boolean))].sort((a, b) => {
         const diff = activeParcours.has(b) - activeParcours.has(a);
         return diff || a.localeCompare(b, 'fr');
