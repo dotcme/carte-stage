@@ -457,6 +457,9 @@ a { color: var(--accent); }
   color: var(--label-secondary);
 }
 .menu-heading + button { margin-top: 2px; }
+/* Menu d'options à choix multiple (parcours) : titre et consigne au-dessus des choix */
+.menu .menu-heading { flex-shrink: 0; padding: 8px 16px 4px 12px; }
+.menu-heading small { display: block; font-size: 0.75rem; line-height: 1rem; font-weight: 400; }
 
 .about {
   max-width: min(480px, calc(100vw - 32px)); padding: 28px; border: 0; border-radius: 36px;
