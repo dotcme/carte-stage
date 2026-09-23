@@ -68,7 +68,7 @@
 
   const DEFAULTS = { annee: 'all', cycles: Object.keys(CYCLES), structures: Object.keys(STRUCTURES), lieu: 'all', q: '' };
   // Parcours : tous cochés (en décocher un l'exclut) ; tags : aucun coché (en cocher un inclut, OU entre eux).
-  // Le filtre Lieu : « all » (partout), « abroad » (tous les pays sauf la France) ou un pays.
+  // Le filtre Lieu : « all » (partout), un choix de LIEUX (la France hexagonale, ou tout sauf elle) ou un pays.
   const state = { annee: 'all', cycles: new Set(DEFAULTS.cycles), structures: new Set(DEFAULTS.structures), lieu: 'all', parcours: new Set(), tags: new Set(), q: '', sel: null };
 
   /* ---------- Carte ---------- */
@@ -193,14 +193,24 @@
   /* ---------- Filtres ---------- */
   function inFrance(pays) { return FRANCE.includes(pays); }
   function isFrance(s) { return inFrance(s.pays); }
+  // France hexagonale, Corse comprise : un stage noté « France » mais situé outre-mer (Saint-Denis de La Réunion,
+  // Cayenne, Papeete…) n'en fait pas partie.
+  function inHexagone(s) { return s.lat > 41 && s.lat < 51.5 && s.lon > -5.5 && s.lon < 10; }
+  function isHexagone(s) { return s.pays === 'France' && inHexagone(s); }
+  // Choix du filtre Lieu autres qu'un pays, dans l'ordre du menu.
+  const LIEUX = {
+    'hors-hexagone': { label: 'Tout sauf la France hexagonale', test: (s) => !isHexagone(s) },
+    hexagone: { label: 'France hexagonale', test: isHexagone }
+  };
+  const lieuChoice = (v) => (Object.hasOwn(LIEUX, v) ? LIEUX[v] : null);
   function matches(s, skip) {
     const sk = skip || '';
     if (state.annee !== 'all' && s.annee !== state.annee) return false;
     if (!sk.includes('cycle') && !state.cycles.has(s.cycle)) return false;
     if (!sk.includes('structure') && !state.structures.has(s.structure)) return false;
     if (!sk.includes('lieu') && state.lieu !== 'all') {
-      if (state.lieu === 'abroad') { if (isFrance(s)) return false; }
-      else if (s.pays !== state.lieu) return false;
+      const choice = lieuChoice(state.lieu);
+      if (choice ? !choice.test(s) : s.pays !== state.lieu) return false;
     }
     if (!sk.includes('parcours') && s.parcours && !state.parcours.has(s.parcours)) return false;
     if (!sk.includes('tags') && state.tags.size && !s.tags.some((t) => state.tags.has(t))) return false;
@@ -225,9 +235,9 @@
   const MENUS = {
     annee: { name: 'Année', options: () => YEARS, label: (v) => (v === 'all' ? 'Toutes les années' : v) },
     lieu: {
-      // « null » trace un séparateur dans le menu : l'option « sauf la France » à part, puis les pays.
-      name: 'Lieu', options: () => ['abroad', null, ...COUNTRIES],
-      label: (v) => (v === 'all' ? 'Partout' : v === 'abroad' ? 'Tous les pays sauf la France' : v),
+      // « null » trace un séparateur dans le menu : les deux choix autour de la France hexagonale à part, puis les pays.
+      name: 'Lieu', options: () => [...Object.keys(LIEUX), null, ...COUNTRIES],
+      label: (v) => (v === 'all' ? 'Partout' : lieuChoice(v) ? lieuChoice(v).label : v),
       count: (v) => countryCounts[v] || 0
     }
   };
@@ -265,7 +275,7 @@
       // Les comptes du menu Lieu ignorent le filtre de lieu : c'est ce qu'on obtiendra en le choisissant.
       if (matches(s, 'lieu')) {
         countryCounts[s.pays] = (countryCounts[s.pays] || 0) + 1;
-        if (!isFrance(s)) countryCounts.abroad = (countryCounts.abroad || 0) + 1;
+        Object.keys(LIEUX).forEach((k) => { if (LIEUX[k].test(s)) countryCounts[k] = (countryCounts[k] || 0) + 1; });
       }
       if (matches(s, 'tags')) s.tags.forEach((t) => { tagCounts[t] = (tagCounts[t] || 0) + 1; });
     });
@@ -742,11 +752,11 @@
     state.annee = YEARS.includes(p.get('annee')) ? p.get('annee') : 'all';
     state.cycles = list('cycle', DEFAULTS.cycles);
     state.structures = list('structure', DEFAULTS.structures);
-    // Anciens liens : lieu=fr|abroad (segments) ; version intermédiaire : pays=Espagne.
-    const lieu = p.get('lieu');
-    if (lieu === 'fr') state.lieu = 'France';
-    else if (lieu === 'abroad' || COUNTRIES.includes(lieu)) state.lieu = lieu;
-    else if (COUNTRIES.includes(p.get('pays'))) state.lieu = p.get('pays');
+    // Anciens liens : lieu=fr|abroad (segments), lieu=France ou abroad (anciens choix du menu) ; version intermédiaire : pays=Espagne.
+    const lieu = p.get('lieu') || p.get('pays');
+    if (lieu === 'fr' || lieu === 'France') state.lieu = 'hexagone';
+    else if (lieu === 'abroad') state.lieu = 'hors-hexagone';
+    else if (lieuChoice(lieu) || COUNTRIES.includes(lieu)) state.lieu = lieu;
     else state.lieu = 'all';
     state.parcours = p.has('parcours')
       ? new Set(p.get('parcours').split(',').filter((k) => PARCOURS.includes(k)))
@@ -1026,9 +1036,8 @@
       });
       YEARS = [...new Set(STAGES.map((s) => s.annee))].filter(Boolean).sort().reverse();
       PARCOURS = [...new Set(STAGES.map((s) => s.parcours).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
-      // La France en tête (les deux tiers des stages), puis les autres pays par ordre alphabétique.
-      COUNTRIES = [...new Set(STAGES.map((s) => s.pays))].filter(Boolean)
-        .sort((a, b) => (b === 'France') - (a === 'France') || a.localeCompare(b, 'fr'));
+      // La France est dans les choix du haut du menu (France hexagonale) ; les autres pays suivent par ordre alphabétique.
+      COUNTRIES = [...new Set(STAGES.map((s) => s.pays))].filter((pays) => pays && pays !== 'France').sort((a, b) => a.localeCompare(b, 'fr'));
       if (YEARS.length) $('[data-subtitle]').textContent = `Géodata Paris · ${YEARS[YEARS.length - 1]} à ${YEARS[0]}`;
       if (data.generated) $('[data-generated]').textContent = `, mises à jour le ${new Date(data.generated).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
       const id = readHash();
