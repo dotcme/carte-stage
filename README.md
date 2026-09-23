@@ -48,6 +48,8 @@ Le vocabulaire des tags vit dans `scripts/tags.mjs`. Après l'avoir modifié, `n
 
 - `index.html`, `assets/style.css`, `assets/app.js` : le site (Leaflet, Leaflet.markercluster et MapLibre, chargés depuis jsDelivr).
 - `assets/basemap.js` : le style du plan clair (tuiles vectorielles OpenFreeMap, données OpenStreetMap).
+- `favicon.ico`, `assets/favicon.svg`, `assets/apple-touch-icon.png` : l’icône du site, une carte pliée aux couleurs du logo.
+- `assets/banner.png` : la bannière de partage (1200 × 630).
 - `data/stages.json` : les stages, produits par le script.
 - `scripts/build-data.mjs` : récupération et nettoyage des données.
 - `scripts/tags.mjs` : le vocabulaire des tags des stages (motifs cherchés dans le sujet).
