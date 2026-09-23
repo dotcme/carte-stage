@@ -30,7 +30,20 @@
   const EUROPE = [[36, -11], [60, 30]];
   const DESKTOP = window.matchMedia('(min-width: 900px)');
 
-  const CHECK = '<svg class="icon check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  const svg = (cls, body) => `<svg class="icon${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`;
+  const CHECK = svg('check', '<path d="M5 12.5l4.5 4.5L19 7.5"/>');
+  const ICONS = {
+    chevronRight: '<path d="M9.5 6.5l6 5.5-6 5.5"/>',
+    chevronDown: '<path d="M6.5 9.5l5.5 5.5 5.5-5.5"/>',
+    close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    place: '<path d="M12 21s-6.5-5.9-6.5-11a6.5 6.5 0 0 1 13 0c0 5.1-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+    share: '<path d="M12 3.5v11M8 7.5l4-4 4 4"/><path d="M8.5 10.5H7a2.5 2.5 0 0 0-2.5 2.5v5A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5v-5a2.5 2.5 0 0 0-2.5-2.5h-1.5"/>',
+    locate: '<circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>',
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    labo: '<path d="M9.5 3.5h5M10.3 3.5v5.8L5.2 17.8a1.6 1.6 0 0 0 1.4 2.4h10.8a1.6 1.6 0 0 0 1.4-2.4l-5.1-8.5V3.5"/><path d="M7.5 14.5h9"/>',
+    entreprise: '<rect x="3.5" y="7.5" width="17" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5M3.5 12.5h17"/>',
+    public: '<path d="M3.5 9L12 4.5 20.5 9"/><path d="M4.5 20h15M6.5 11.5v5.5M10.2 11.5v5.5M13.8 11.5v5.5M17.5 11.5v5.5"/>'
+  };
   const PIN_PATH = 'M13 1C6.4 1 1 6.2 1 12.7c0 8.6 10.3 18.9 11.2 19.8a1.1 1.1 0 0 0 1.6 0C14.7 31.6 25 21.3 25 12.7 25 6.2 19.6 1 13 1z';
   const pinSvg = (cls) => `<svg class="${cls}" viewBox="0 0 26 34" aria-hidden="true"><path d="${PIN_PATH}"/><circle cx="13" cy="12.5" r="4.2" fill="#fff"/></svg>`;
 
@@ -49,6 +62,7 @@
   let countryCounts = {}; // comptes par pays, pour le menu du filtre Lieu
   let parcoursOpen = false; // parcours de 3e année dépliés sous la ligne ing3 (état d'affichage seul)
   let resultsOpen = false; // panneau de la liste des stages, ouvert (bureau)
+  let sheetBeforeDetail = 'peek'; // hauteur de la feuille mobile à retrouver en fermant la fiche
   const byId = new Map();
   const markers = new Map();
 
@@ -76,17 +90,41 @@
     return layer;
   }
 
-  // Plan clair : fond vectoriel aux couleurs de Lucent (assets/basemap.js), clair ou sombre selon le système.
+  // Apparence : automatique (celle du système), claire ou sombre ; le choix est gardé dans le navigateur.
+  const APPEARANCES = [
+    { id: 'auto', label: 'Automatique' },
+    { id: 'light', label: 'Clair' },
+    { id: 'dark', label: 'Sombre' }
+  ];
   const DARK = window.matchMedia('(prefers-color-scheme: dark)');
-  const theme = () => (DARK.matches ? 'dark' : 'light');
+  let appearance = 'auto';
+  try { appearance = localStorage.getItem('apparence') || 'auto'; } catch (e) { /* stockage indisponible */ }
+  if (!APPEARANCES.some((a) => a.id === appearance)) appearance = 'auto';
+  const theme = () => (appearance === 'auto' ? (DARK.matches ? 'dark' : 'light') : appearance);
+
+  // Plan clair : fond vectoriel aux couleurs de Lucent (assets/basemap.js), dans l'apparence choisie.
   const vector = L.maplibreGL({
     style: window.lucentBasemapStyle(theme()),
     attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> ' + OSM_ATTRIBUTION
   });
-  DARK.addEventListener('change', () => {
+  function applyTheme() {
+    const t = theme();
+    if (document.documentElement.dataset.theme === t) return;
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name="theme-color"]').content = t === 'dark' ? '#000000' : '#f2f2f7';
     const gl = vector.getMaplibreMap && vector.getMaplibreMap();
-    if (gl) gl.setStyle(window.lucentBasemapStyle(theme()));
-  });
+    if (gl) gl.setStyle(window.lucentBasemapStyle(t));
+    clusters.refreshClusters(); // les parts de cycle des groupes prennent les couleurs du thème
+  }
+  function setAppearance(id) {
+    appearance = id;
+    try {
+      if (id === 'auto') localStorage.removeItem('apparence');
+      else localStorage.setItem('apparence', id);
+    } catch (e) { /* le choix vaut pour cette visite seulement */ }
+    applyTheme();
+  }
+  DARK.addEventListener('change', () => { if (appearance === 'auto') applyTheme(); });
 
   const BASES = [
     { id: 'clair', label: 'Plan clair', layer: vector },
@@ -142,11 +180,14 @@
   function mapPadding() {
     // Bureau : le panneau des résultats ouvert réduit d'autant la partie utile de la carte.
     const gauche = 16 * 2 + 392 + 24 + (resultsOpen ? 392 + 16 : 0);
-    if (DESKTOP.matches) return { paddingTopLeft: [gauche, 32], paddingBottomRight: [80, 32] };
+    // La fiche ouverte occupe le côté droit, à gauche des outils (sous 1280 px, elle se pose sur la liste ouverte).
+    const card = state.sel !== null && !(resultsOpen && window.innerWidth < 1280);
+    if (DESKTOP.matches) return { paddingTopLeft: [gauche, 32], paddingBottomRight: [card ? 16 + 48 + 12 + 380 + 24 : 80, 32] };
     // Hauteur visée par la feuille (la transition CSS peut être en cours) : voir style.css.
     const h = window.innerHeight;
-    const sheet = { peek: 196, detail: Math.min(520, h - 200), full: h - 150 }[document.body.dataset.sheet] || 196;
-    return { paddingTopLeft: [24, 140], paddingBottomRight: [72, sheet + 32] };
+    const peek = parseFloat(cssVar('--sheet-peek')) || 156;
+    const sheet = { peek, detail: Math.min(540, h - 200), full: h - 84 }[document.body.dataset.sheet] || peek;
+    return { paddingTopLeft: [24, 96], paddingBottomRight: [72, sheet + 32] };
   }
 
   /* ---------- Filtres ---------- */
@@ -202,7 +243,16 @@
     menu.innerHTML = item('all') + sep + m.options().map((v) => (v === null ? sep : item(v))).join('');
   }
 
+  // Les contrôles sont redessinés à chaque filtre : le focus clavier revient sur le même contrôle.
+  function focusKey(el) {
+    const box = el && el.closest && el.closest('[data-cycles], [data-structure-rows], [data-tags], [data-quick-filters], [data-detail-card], [data-detail]');
+    if (!box) return null;
+    const attr = ['data-cycle', 'data-structure', 'data-tag', 'data-parcours', 'data-menu', 'data-toggle-parcours'].find((a) => el.hasAttribute(a));
+    return attr ? { box, sel: `[${attr}="${CSS.escape(el.getAttribute(attr))}"]` } : null;
+  }
+
   function renderControls() {
+    const focused = focusKey(document.activeElement);
     const cycleCounts = {};
     const structCounts = {};
     const parcoursCounts = {};
@@ -220,46 +270,36 @@
       if (matches(s, 'tags')) s.tags.forEach((t) => { tagCounts[t] = (tagCounts[t] || 0) + 1; });
     });
 
-    // Ingénieur 3e année : la ligne devient un groupe avec, à droite, le bouton qui déplie
-    // les parcours ; cochés, ils s'affichent indentés sous la ligne.
-    const cycleRow = (k) => k !== 'ing3' ? `
+    // Ingénieur 3e année : une ligne « Parcours » en retrait, sous la ligne du cycle, déplie
+    // les parcours ; cochés, ils s'affichent indentés sous elle.
+    const cycleRow = (k) => `
       <button type="button" class="row" data-cycle="${k}" aria-pressed="${state.cycles.has(k)}">
         ${pinSvg('pin-glyph pin--' + k)}
         <span class="row-label">${CYCLES[k].label}</span>
         <span class="row-count">${fmt(cycleCounts[k] || 0)}</span>
         ${CHECK}
-      </button>` : `
-      <div class="row row-disclose">
-        <button type="button" class="row-main" data-cycle="ing3" aria-pressed="${state.cycles.has('ing3')}">
-          ${pinSvg('pin-glyph pin--' + k)}
-          <span class="row-label">${CYCLES[k].label}</span>
-          <span class="row-count">${fmt(cycleCounts[k] || 0)}</span>
-          ${CHECK}
-        </button>
-        <button type="button" class="disclose" data-toggle-parcours aria-expanded="${parcoursOpen}" aria-label="Parcours de 3e année">
-          <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5l6 5.5-6 5.5"/></svg>
-        </button>
-      </div>
+      </button>`;
+    const parcoursValue = state.parcours.size === PARCOURS.length ? 'Tous'
+      : state.parcours.size ? `${state.parcours.size} sur ${PARCOURS.length}` : 'Aucun';
+    const parcoursRows = !PARCOURS.length ? '' : `
+      <button type="button" class="row row-parcours" data-toggle-parcours aria-expanded="${parcoursOpen}">
+        <span class="row-label">Parcours de 3e année</span>
+        <span class="row-count">${parcoursValue}</span>
+        ${svg('chevron', ICONS.chevronRight)}
+      </button>
       ${parcoursOpen ? `<div class="subrows" role="group" aria-label="Parcours">${PARCOURS.map((p) => `
         <button type="button" class="row row-sub" data-parcours="${esc(p)}" aria-pressed="${state.parcours.has(p)}">
           <span class="row-label">${esc(p)}</span>
           <span class="row-count">${fmt(parcoursCounts[p] || 0)}</span>
           ${CHECK}
         </button>`).join('')}</div>` : ''}`;
-    const cycleRows = Object.keys(CYCLES).map(cycleRow).join('');
+    const cycleRows = Object.keys(CYCLES).map((k) => cycleRow(k) + (k === 'ing3' ? parcoursRows : '')).join('');
     $$('[data-cycles]').forEach((el) => { el.innerHTML = cycleRows; });
-
-    $$('[data-cycle-chips]').forEach((el) => {
-      el.innerHTML = Object.keys(CYCLES).map((k) => `
-        <button type="button" class="cycle-chip" data-cycle="${k}" aria-pressed="${state.cycles.has(k)}">
-          <span class="dot" style="background: var(--c-${k})"></span>${CYCLES[k].short}
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
-        </button>`).join('');
-    });
 
     $$('[data-structure-rows]').forEach((el) => {
       el.innerHTML = Object.keys(STRUCTURES).map((k) => `
         <button type="button" class="row" data-structure="${k}" aria-pressed="${state.structures.has(k)}">
+          ${svg('lead', ICONS[k])}
           <span class="row-label">${STRUCTURES[k].label}</span>
           <span class="row-count">${fmt(structCounts[k] || 0)}</span>
           ${CHECK}
@@ -275,15 +315,61 @@
       el.innerHTML = Object.keys(group).map((t) => tagChip(t, group[t])).join('');
     });
 
-    $$('[data-menu-value]').forEach((el) => { const k = el.dataset.menuValue; el.textContent = MENUS[k].label(state[k]); });
+    // Mobile : filtres rapides dans la feuille (année, cycles, lieu), les mêmes que sur ordinateur.
+    const quickMenu = (key, icon) => {
+      const set = state[key] !== 'all';
+      return `
+        <button type="button" class="chip${set ? ' is-set' : ''}" data-menu="${key}" aria-haspopup="listbox" aria-expanded="false" aria-label="${MENUS[key].name} : ${esc(MENUS[key].label(state[key]))}">
+          ${icon ? svg('lead', icon) : ''}<span>${set ? esc(MENUS[key].label(state[key])) : MENUS[key].name}</span>${svg('chevron', ICONS.chevronDown)}
+        </button>`;
+    };
+    const quickCycle = (k) => `
+      <button type="button" class="chip" data-cycle="${k}" aria-pressed="${state.cycles.has(k)}" style="--cycle: var(--c-${k})">
+        <span class="dot"></span>${CYCLES[k].short}
+      </button>`;
+    $$('[data-quick-filters]').forEach((el) => {
+      const scroll = el.scrollLeft;
+      el.innerHTML = quickMenu('annee') + Object.keys(CYCLES).map(quickCycle).join('') + quickMenu('lieu');
+      el.scrollLeft = scroll;
+    });
+
+    $$('[data-menu-value]').forEach((el) => {
+      const k = el.dataset.menuValue;
+      el.textContent = MENUS[k].label(state[k]);
+      el.closest('.select-row').classList.toggle('is-set', state[k] !== 'all');
+    });
     $$('[data-search]').forEach((input) => { if (input.value !== state.q) input.value = state.q; });
 
     const changed = changedCount();
     const badge = $('[data-filter-badge]');
     badge.hidden = !changed;
     badge.textContent = changed;
-    $$('[data-action="reset"]').forEach((b) => { b.hidden = isDefault() && !!b.closest('.results-actions'); });
+    $('[data-action="open-filters"]').setAttribute('aria-label', changed ? `Filtres, ${changed} actif${changed > 1 ? 's' : ''}` : 'Filtres');
+    // Réinitialiser : masqué quand rien n'est filtré, sauf dans la feuille des filtres où il reste visible, inactif.
+    $$('[data-action="reset"]').forEach((b) => {
+      if (b.closest('[data-filters-sheet]')) b.disabled = isDefault();
+      else b.hidden = isDefault();
+    });
+    restoreFocus(focused);
+    edgeUpdaters.forEach((f) => f());
   }
+  function restoreFocus(focused) {
+    if (!focused || focused.box.contains(document.activeElement)) return;
+    const el = $(focused.sel, focused.box);
+    if (el) el.focus({ preventScroll: true });
+  }
+
+  // Fondu en haut ou en bas d'une zone qui défile, seulement quand il reste du contenu de ce côté.
+  const edgeUpdaters = [];
+  $$('[data-scroll-fade]').forEach((el) => {
+    const f = () => {
+      el.classList.toggle('fade-top', el.scrollTop > 1);
+      el.classList.toggle('fade-bottom', el.scrollTop + el.clientHeight < el.scrollHeight - 1);
+    };
+    el.addEventListener('scroll', f, { passive: true });
+    if (window.ResizeObserver) new ResizeObserver(f).observe(el);
+    edgeUpdaters.push(f);
+  });
 
   /* ---------- Liste et carte ---------- */
   let visible = [];
@@ -296,8 +382,11 @@
     const countries = new Set(visible.map((s) => s.pays)).size;
 
     $$('[data-count]').forEach((el) => { el.textContent = plural(visible.length, 'stage', 'stages'); });
-    $('[data-summary]').textContent = `${state.annee === 'all' ? 'Toutes les années' : state.annee} · ${plural(countries, 'pays', 'pays')} · ${fmt(abroad)} à l’étranger`;
+    // L'année est déjà dans les filtres rapides de la feuille : le résumé donne les pays.
+    $('[data-summary]').textContent = `${plural(countries, 'pays', 'pays')} · ${fmt(abroad)} à l’étranger`;
     $('[data-apply]').textContent = `Afficher ${plural(visible.length, 'stage', 'stages')}`;
+    const stat = (n, one, many) => `<div class="stat"><dt>${n > 1 ? many : one}</dt><dd>${fmt(n)}</dd></div>`;
+    $('[data-stats]').innerHTML = stat(visible.length, 'stage', 'stages') + stat(countries, 'pays', 'pays') + stat(abroad, 'à l’étranger', 'à l’étranger');
 
     if (state.sel !== null && !visible.some((s) => s.id === state.sel)) setSelection(null, { silent: true });
 
@@ -308,16 +397,17 @@
     renderList();
     renderControls();
     renderResultsButton();
+    if (state.sel !== null) renderDetail(); // les tags de la fiche suivent les filtres
     writeHash();
   }
 
   function listRow(s) {
     return `
       <button type="button" class="item" data-id="${esc(s.id)}" aria-current="${s.id === state.sel}">
-        <span class="dot" style="background: var(--c-${s.cycle})"></span>
+        ${pinSvg('pin-glyph pin--' + s.cycle)}
         <span class="item-text">
           <span class="item-title">${esc(s.org || 'Structure non renseignée')}</span>
-          <span class="item-sub">${esc(placeOf(s))} · ${CYCLES[s.cycle].short} · ${s.annee}</span>
+          <span class="item-sub">${esc(placeOf(s))} · ${CYCLES[s.cycle].short}</span>
         </span>
       </button>`;
   }
@@ -325,9 +415,23 @@
   function renderList() {
     let html;
     if (!visible.length) {
-      html = '<div class="empty"><strong>Aucun stage</strong><span>Élargissez l’année, le cycle ou le lieu pour voir plus de stages.</span></div>';
+      html = `<div class="empty">${svg('', ICONS.search)}<strong>Aucun stage</strong><span>${state.q
+        ? `Rien ne correspond à « ${esc(state.q.trim())} » avec ces filtres. Vérifiez l’orthographe ou essayez un autre mot.`
+        : 'Élargissez l’année, le cycle ou le lieu pour voir plus de stages.'}</span>
+        <button type="button" class="plain" data-action="reset">Réinitialiser les filtres</button></div>`;
     } else {
-      const rows = visible.slice(0, listLimit).map(listRow);
+      // La liste suit l'ordre des données (année décroissante) : un intertitre par année.
+      const perYear = {};
+      visible.forEach((s) => { perYear[s.annee] = (perYear[s.annee] || 0) + 1; });
+      let year = null;
+      const rows = [];
+      visible.slice(0, listLimit).forEach((s) => {
+        if (s.annee !== year) {
+          year = s.annee;
+          rows.push(`<h3 class="list-heading"><span>${esc(year)}</span><span>${plural(perYear[year], 'stage', 'stages')}</span></h3>`);
+        }
+        rows.push(listRow(s));
+      });
       if (visible.length > listLimit) {
         rows.push(`<button type="button" class="plain more" data-action="more">Afficher ${plural(Math.min(200, visible.length - listLimit), 'stage de plus', 'stages de plus')}</button>`);
       }
@@ -345,6 +449,7 @@
   function setResults(open) {
     resultsOpen = open;
     $('[data-results]').hidden = !open;
+    document.body.classList.toggle('results-open', open);
     renderResultsButton();
   }
 
@@ -358,24 +463,63 @@
   }
 
   /* ---------- Fiche ---------- */
+  const tagLabel = (t) => TAGS.techniques[t] || TAGS.domaines[t] || t;
   function detailHtml(s, withClose) {
+    const org = s.org || 'Structure non renseignée';
+    // Autres stages de la même structure, parmi ceux qu'affichent les filtres.
+    const others = s.org ? visible.filter((o) => o.org === s.org && o.id !== s.id) : [];
+    const otherRow = (o) => `
+      <button type="button" class="item" data-id="${esc(o.id)}">
+        ${pinSvg('pin-glyph pin--' + o.cycle)}
+        <span class="item-text">
+          <span class="item-title">${o.annee} · ${CYCLES[o.cycle].short}</span>
+          <span class="item-sub">${esc(o.sujet || placeOf(o))}</span>
+        </span>
+      </button>`;
     return `
       <div class="detail">
         <div class="detail-head">
           <div class="detail-titles">
-            <div class="detail-cycle" style="color: var(--c-${s.cycle})"><span class="dot" style="background: var(--c-${s.cycle})"></span>${CYCLES[s.cycle].label}${s.parcours ? ' · ' + esc(s.parcours) : ''}</div>
-            <h2>${esc(s.org || 'Structure non renseignée')}</h2>
-            <div class="detail-place">${esc([s.ville, s.pays].filter(Boolean).join(', '))}</div>
+            <span class="detail-cycle" style="--cycle: var(--c-${s.cycle})"><span class="dot"></span>${CYCLES[s.cycle].label}${s.parcours ? ' · ' + esc(s.parcours) : ''}</span>
+            <h2>${esc(org)}</h2>
+            <div class="detail-place">${svg('', ICONS.place)}${esc([s.ville, s.pays].filter(Boolean).join(', ') || 'Lieu non renseigné')}</div>
           </div>
-          ${withClose ? '<button type="button" class="close" data-action="close-detail" aria-label="Fermer"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' : ''}
+          ${withClose ? `<button type="button" class="close" data-action="close-detail" aria-label="Fermer">${svg('', ICONS.close)}</button>` : ''}
+        </div>
+        <div class="detail-actions">
+          <button type="button" class="action tinted" data-action="share">${svg('', ICONS.share)}<span>Partager</span></button>
+          <button type="button" class="action" data-action="locate">${svg('', ICONS.locate)}<span>Centrer</span></button>
         </div>
         <dl>
           <div><dt>Année</dt><dd>${s.annee}</dd></div>
           <div><dt>Structure</dt><dd>${STRUCTURES[s.structure].long}</dd></div>
           ${s.type ? `<div class="wide"><dt>Type de stage</dt><dd>${TYPES[s.type] || esc(s.type)}</dd></div>` : ''}
-          ${s.sujet ? `<div class="wide"><dt>Sujet</dt><dd>${esc(s.sujet)}</dd></div>` : ''}
         </dl>
+        ${s.sujet ? `<section class="detail-section"><h3>Sujet</h3><p class="detail-subject">${esc(s.sujet)}</p></section>` : ''}
+        ${s.tags.length ? `<section class="detail-section"><h3>Tags</h3><div class="tag-chips" role="group" aria-label="Tags du stage">${s.tags.map((t) => `
+          <button type="button" class="tag-chip" data-tag="${t}" aria-pressed="${state.tags.has(t)}">${state.tags.has(t) ? CHECK : ''}${tagLabel(t)}</button>`).join('')}
+        </div></section>` : ''}
+        ${others.length ? `<section class="detail-section"><h3>Dans la même structure · ${fmt(others.length)}</h3>
+          <div class="card list">${others.slice(0, 5).map(otherRow).join('')}${others.length > 5 ? `
+            <button type="button" class="plain more" data-action="same-org">Voir les ${fmt(others.length + 1)} stages</button>` : ''}</div>
+        </section>` : ''}
       </div>`;
+  }
+  function renderDetail() {
+    const s = byId.get(state.sel);
+    if (!s) return;
+    const focused = focusKey(document.activeElement);
+    $('[data-detail-card]').innerHTML = detailHtml(s, true);
+    $('[data-detail]').innerHTML = detailHtml(s, false);
+    restoreFocus(focused);
+  }
+
+  function reveal(m, zoom) {
+    clusters.zoomToShowLayer(m, () => {
+      const target = Math.max(map.getZoom(), zoom || 0);
+      if (target !== map.getZoom()) centerOn(m.getLatLng(), target);
+      else panIntoView(m.getLatLng());
+    });
   }
 
   function setSelection(id, options) {
@@ -390,34 +534,34 @@
     const s = id !== null ? byId.get(id) : null;
     const card = $('[data-detail-card]');
     const detailView = $('[data-view="detail"]');
+    const wasDetail = !detailView.hidden;
 
     if (!s) {
       card.hidden = true;
-      detailView.hidden = true;
       showView('list');
-      if (document.body.dataset.sheet === 'detail') setSheet('peek');
+      if (wasDetail || document.body.dataset.sheet === 'detail') setSheet(sheetBeforeDetail);
     } else {
       const m = markers.get(id);
       m.setIcon(pinIcon(s.cycle, true));
       m.setZIndexOffset(1000);
-      card.innerHTML = detailHtml(s, true);
+      renderDetail();
       card.hidden = false;
-      $('[data-detail]').innerHTML = detailHtml(s, false);
+      card.scrollTop = 0;
+      $('[data-detail]').scrollTop = 0;
       if (!DESKTOP.matches) {
+        if (!wasDetail) sheetBeforeDetail = document.body.dataset.sheet === 'full' ? 'full' : 'peek';
         showView('detail');
-        setSheet('detail');
+        if (!wasDetail || document.body.dataset.sheet !== 'full') setSheet('detail');
       }
-      if (opts.reveal) {
-        clusters.zoomToShowLayer(m, () => {
-          const target = Math.max(map.getZoom(), opts.zoom || 0);
-          if (target !== map.getZoom()) centerOn(m.getLatLng(), target);
-          else panIntoView(m.getLatLng());
-        });
-      } else if (!DESKTOP.matches) {
-        setTimeout(() => panIntoView(m.getLatLng()), 450);
-      }
+      if (opts.reveal) reveal(m, opts.zoom);
+      else if (!DESKTOP.matches) setTimeout(() => panIntoView(m.getLatLng()), 450);
     }
     $$('[data-list] .item').forEach((el) => el.setAttribute('aria-current', String(el.dataset.id === id)));
+    // La liste ouverte suit la carte : la ligne du stage choisi vient dans la vue.
+    if (s && resultsOpen) {
+      const row = $(`[data-results] .item[data-id="${CSS.escape(id)}"]`);
+      if (row) row.scrollIntoView({ block: 'nearest' });
+    }
     if (!opts.silent) writeHash();
   }
 
@@ -452,18 +596,127 @@
     map.fitBounds(bounds, Object.assign({ maxZoom: 12 }, mapPadding()));
   }
 
+  /* ---------- Partage ---------- */
+  let toastTimer;
+  function toast(text, done) {
+    const el = $('[data-toast]');
+    el.innerHTML = (done ? CHECK : '') + esc(text);
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 2200);
+  }
+  // L'adresse de la page porte le stage et les filtres : sur mobile, la feuille de partage du système ; ailleurs, le presse-papiers.
+  async function shareStage() {
+    const s = byId.get(state.sel);
+    if (!s) return;
+    writeHash();
+    const url = location.href;
+    if (navigator.share && !DESKTOP.matches) {
+      try { await navigator.share({ title: `${s.org} · Carte des stages`, url }); } catch (e) { /* partage annulé */ }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast('Lien copié', true);
+    } catch (e) {
+      toast('Copiez l’adresse de la page pour partager ce stage');
+    }
+  }
+
   /* ---------- Feuille mobile ---------- */
+  function sheetHeights() {
+    const h = window.innerHeight;
+    const peek = parseFloat(cssVar('--sheet-peek')) || 156;
+    return { peek, detail: Math.min(540, h - 200), full: h - 84 };
+  }
   function setSheet(mode) {
     document.body.dataset.sheet = mode;
     const g = $('.grabber');
-    g.setAttribute('aria-label', mode === 'full' ? 'Réduire la liste' : 'Agrandir la liste');
+    g.setAttribute('aria-label', mode === 'full' ? 'Réduire la feuille' : 'Agrandir la feuille');
     g.setAttribute('aria-expanded', String(mode === 'full'));
+  }
+  function toggleSheet() {
+    const mode = document.body.dataset.sheet;
+    if (state.sel !== null) return setSheet(mode === 'full' ? 'detail' : 'full');
+    return setSheet(mode === 'full' ? 'peek' : 'full');
   }
   function openFilters(open) {
     $('[data-filters-sheet]').hidden = !open;
     $('[data-filters-scrim]').hidden = !open;
-    if (open) $('[data-filters-sheet] .close').focus();
+    document.body.classList.toggle('filters-open', open);
+    if (open) {
+      $('[data-filters-sheet] .close').focus();
+      edgeUpdaters.forEach((f) => f());
+    } else if (document.activeElement === document.body || $('[data-filters-sheet]').contains(document.activeElement)) {
+      $('[data-action="open-filters"]').focus({ preventScroll: true });
+    }
   }
+
+  // Glisser la feuille par sa poignée ou son en-tête : elle suit le doigt, puis se cale
+  // sur la hauteur la plus proche, ou la suivante dans le sens d'un geste rapide.
+  let swallowClick = false;
+  function draggable(el, onMove, onEnd) {
+    let d = null;
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button > 0 || !e.target.closest('[data-sheet-handle], [data-filters-handle]')) return;
+      if (e.target.closest('button:not(.grabber)')) return;
+      d = { id: e.pointerId, y: e.clientY, lastY: e.clientY, lastT: e.timeStamp, v: 0, moved: false, h: el.getBoundingClientRect().height };
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!d || e.pointerId !== d.id) return;
+      const dy = e.clientY - d.y;
+      if (!d.moved) {
+        if (Math.abs(dy) < 8) return;
+        d.moved = true;
+        el.setPointerCapture(e.pointerId);
+        el.classList.add('dragging');
+      }
+      if (e.timeStamp > d.lastT) d.v = (e.clientY - d.lastY) / (e.timeStamp - d.lastT);
+      d.lastY = e.clientY;
+      d.lastT = e.timeStamp;
+      onMove(dy, d);
+    });
+    const end = (e) => {
+      if (!d || e.pointerId !== d.id) return;
+      const done = d;
+      d = null;
+      if (!done.moved) return;
+      swallowClick = true;
+      setTimeout(() => { swallowClick = false; }, 0);
+      onEnd(e.clientY - done.y, done);
+      el.classList.remove('dragging');
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  }
+
+  const panel = $('.panel');
+  draggable(panel, (dy, d) => {
+    if (DESKTOP.matches) return;
+    panel.style.height = `${Math.max(96, Math.min(sheetHeights().full, d.h - dy))}px`;
+  }, (dy, d) => {
+    if (DESKTOP.matches) return;
+    const h = panel.getBoundingClientRect().height;
+    panel.style.height = '';
+    const H = sheetHeights();
+    const stops = state.sel !== null
+      ? [['close', H.peek], ['detail', H.detail], ['full', H.full]]
+      : [['peek', H.peek], ['full', H.full]];
+    let target;
+    if (d.v < -0.4) target = stops.find((st) => st[1] > h + 1) || stops[stops.length - 1];
+    else if (d.v > 0.4) target = stops.slice().reverse().find((st) => st[1] < h - 1) || stops[0];
+    else target = stops.reduce((a, b) => (Math.abs(b[1] - h) < Math.abs(a[1] - h) ? b : a));
+    if (target[0] === 'close') setSelection(null);
+    else setSheet(target[0]);
+  });
+
+  const filtersSheet = $('[data-filters-sheet]');
+  draggable(filtersSheet, (dy) => {
+    filtersSheet.style.transform = `translateY(${Math.max(0, dy)}px)`;
+  }, (dy, d) => {
+    filtersSheet.style.transform = '';
+    if (dy > 120 || d.v > 0.5) openFilters(false);
+  });
 
   /* ---------- Adresse partageable ---------- */
   function writeHash() {
@@ -531,7 +784,9 @@
       </button>`;
     $('[data-layers-menu]').innerHTML =
       '<div class="menu-heading">Fond de carte</div>' +
-      BASES.map((b) => item(base === b, `data-base="${b.id}"`, b.label)).join('');
+      BASES.map((b) => item(base === b, `data-base="${b.id}"`, b.label)).join('') +
+      '<div class="menu-sep" role="separator"></div><div class="menu-heading">Apparence</div>' +
+      APPEARANCES.map((a) => item(appearance === a.id, `data-appearance="${a.id}"`, a.label)).join('');
   }
   function toggleLayersMenu(open) {
     const menu = $('[data-layers-menu]');
@@ -605,10 +860,13 @@
 
   /* ---------- Événements ---------- */
   document.addEventListener('click', (e) => {
+    if (swallowClick) return; // fin d'un glissement de feuille, pas un clic
     const t = e.target.closest('button');
     if (!t) {
       if (!e.target.closest('[data-layers-menu]')) toggleLayersMenu(false);
       if (!e.target.closest('[data-options-menu]')) closeMenu();
+      // Mobile : toucher l'en-tête de la feuille l'agrandit ou la réduit, comme la poignée.
+      if (!DESKTOP.matches && e.target.closest('.sheet-top')) toggleSheet();
       return;
     }
     if (!t.closest('[data-layers-menu]') && t.dataset.action !== 'layers') toggleLayersMenu(false);
@@ -653,6 +911,10 @@
       if (next !== base) { map.removeLayer(base.layer); base = next; base.layer.addTo(map); }
       return toggleLayersMenu(false);
     }
+    if (t.dataset.appearance) {
+      setAppearance(t.dataset.appearance);
+      return toggleLayersMenu(false);
+    }
 
     switch (t.dataset.action) {
       case 'reset':
@@ -672,9 +934,22 @@
       case 'layers': return toggleLayersMenu();
       case 'about': return $('[data-about]').showModal();
       case 'close-detail': return setSelection(null);
-      case 'toggle-sheet':
-        if (document.body.dataset.sheet === 'detail' && state.sel !== null) return setSelection(null);
-        return setSheet(document.body.dataset.sheet === 'full' ? 'peek' : 'full');
+      case 'share': return shareStage();
+      case 'locate':
+        if (state.sel === null) return;
+        if (!DESKTOP.matches && document.body.dataset.sheet === 'full') setSheet('detail');
+        return reveal(markers.get(state.sel), 12);
+      case 'same-org': {
+        // Tous les stages de la structure : recherche par son nom, liste ouverte.
+        const s = byId.get(state.sel);
+        if (!s) return;
+        state.q = s.org;
+        update();
+        if (DESKTOP.matches) return setResults(true);
+        setSelection(null);
+        return setSheet('full');
+      }
+      case 'toggle-sheet': return toggleSheet();
       case 'open-filters': return openFilters(true);
       case 'close-filters': return openFilters(false);
       case 'toggle-results': return setResults(!resultsOpen);
@@ -703,13 +978,17 @@
     input.addEventListener('keydown', (e) => {
       // Entrée dans la recherche : montre la liste des résultats.
       if (e.key !== 'Enter') return;
-      if (DESKTOP.matches) setResults(true);
-      else { input.blur(); setSheet('full'); }
+      if (DESKTOP.matches) return setResults(true);
+      input.blur();
+      if (state.sel !== null) setSelection(null);
+      setSheet('full');
     });
   });
+  // Toucher la carte hors d'un point ferme la fiche, puis replie la feuille.
   map.on('click', () => {
     toggleLayersMenu(false);
     closeMenu();
+    if (state.sel !== null) return setSelection(null);
     if (!DESKTOP.matches && document.body.dataset.sheet === 'full') setSheet('peek');
   });
   window.addEventListener('hashchange', () => {
@@ -748,6 +1027,7 @@
       YEARS = [...new Set(STAGES.map((s) => s.annee))].filter(Boolean).sort().reverse();
       PARCOURS = [...new Set(STAGES.map((s) => s.parcours).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
       COUNTRIES = [...new Set(STAGES.map((s) => s.pays))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'fr'));
+      if (YEARS.length) $('[data-subtitle]').textContent = `Géodata Paris · ${YEARS[YEARS.length - 1]} à ${YEARS[0]}`;
       if (data.generated) $('[data-generated]').textContent = `, mises à jour le ${new Date(data.generated).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
       const id = readHash();
       parcoursOpen = state.parcours.size !== PARCOURS.length; // déplie si un filtre parcours est actif
@@ -755,6 +1035,6 @@
       if (id !== null) setSelection(id, { reveal: true, zoom: 9 });
     })
     .catch(() => {
-      $('[data-list]').innerHTML = '<div class="empty"><strong>Stages indisponibles</strong><span>Le fichier des stages n’a pas pu être chargé. Rechargez la page.</span></div>';
+      $$('[data-list]').forEach((list) => { list.innerHTML = '<div class="empty"><strong>Stages indisponibles</strong><span>Le fichier des stages n’a pas pu être chargé. Rechargez la page.</span></div>'; });
     });
 })();

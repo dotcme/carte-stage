@@ -4,11 +4,14 @@ Carte interactive des stages réalisés par les étudiantes et étudiants de Gé
 
 - des filtres regroupés dans le panneau : année, cycle — qui sert aussi de légende avec le nombre de stages —, parcours de 3e année (sous-catégories à cocher sous « Ingénieur 3e année »), type de structure (laboratoire, entreprise, service public), lieu (une liste déroulante : partout, tous les pays sauf la France, ou un pays précis) et tags (10 techniques comme SIG ou télédétection, 9 domaines comme eau ou urbanisme) ;
 - une recherche par ville, structure ou sujet ;
-- la liste des stages affichés, synchronisée avec la carte — sur ordinateur, elle s'ouvre par un bouton ou en appuyant sur Entrée dans la recherche, dans un panneau à côté des filtres ;
-- une fiche par stage, avec un lien à partager ;
+- les chiffres clés des stages affichés : nombre, pays, stages à l’étranger ;
+- la liste des stages affichés, classée par année et synchronisée avec la carte — sur ordinateur, elle s'ouvre par un bouton ou en appuyant sur Entrée dans la recherche, dans un panneau à côté des filtres ; sur mobile, dans la feuille du bas, qu'on agrandit en la touchant ou en la faisant glisser ;
+- sur mobile, des filtres rapides dans la feuille (année, cycles, lieu) ; les autres sont dans la feuille des filtres, ouverte depuis la recherche ;
+- une fiche par stage : ses tags (un toucher filtre la carte), les autres stages de la même structure, et deux boutons, « Partager » (la feuille de partage du téléphone, ou le lien copié sur ordinateur) et « Centrer » ;
 - le regroupement des points proches, avec la part de chaque cycle ;
 - l’export CSV des stages affichés ;
-- le choix du fond : plan clair aux couleurs du site (par défaut, clair ou sombre selon le système), Plan IGN ou photographies aériennes.
+- le choix du fond : plan clair aux couleurs du site, Plan IGN ou photographies aériennes ;
+- le choix de l’apparence, dans le même menu : automatique (celle du système, par défaut), claire ou sombre ; le choix est gardé dans le navigateur.
 
 Les filtres sont enregistrés dans l’adresse de la page (`#annee=2024-2025&tags=sig,eau`, par exemple) : un lien copié ouvre la carte dans le même état.
 
