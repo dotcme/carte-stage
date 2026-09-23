@@ -155,15 +155,19 @@
   function isDefault() { return !changedCount() && state.annee === 'all' && !state.q; }
 
   /* ---------- Rendu des contrôles ---------- */
-  function renderYears() {
-    const html = ['<option value="all">Toutes les années</option>']
-      .concat(YEARS.map((y) => `<option value="${y}">${y}</option>`)).join('');
-    $$('[data-year]').forEach((sel) => { sel.innerHTML = html; sel.value = state.annee; });
-  }
-  function renderParcours() {
-    const html = ['<option value="all">Tous</option>']
-      .concat(PARCOURS.map((p) => `<option value="${esc(p)}">${esc(p)}</option>`)).join('');
-    $$('[data-parcours]').forEach((sel) => { sel.innerHTML = html; sel.value = state.parcours; });
+  const MENUS = {
+    annee: { name: 'Année', options: () => YEARS, label: (v) => (v === 'all' ? 'Toutes les années' : v) },
+    parcours: { name: 'Parcours', options: () => PARCOURS, label: (v) => (v === 'all' ? 'Tous' : v) },
+  };
+  function renderMenu(key) {
+    const m = MENUS[key];
+    const item = (v) => `
+      <button type="button" class="menu-item" role="option" data-option="${esc(v)}" aria-selected="${state[key] === v}" tabindex="-1">
+        ${CHECK}${esc(m.label(v))}
+      </button>`;
+    const menu = $('[data-options-menu]');
+    menu.setAttribute('aria-label', m.name);
+    menu.innerHTML = item('all') + '<div class="menu-sep" role="separator"></div>' + m.options().map(item).join('');
   }
 
   function renderControls() {
@@ -211,8 +215,7 @@
         <button type="button" class="segment" role="radio" data-place="${k}" aria-checked="${state.lieu === k}">${PLACES[k]}</button>`).join('');
     });
 
-    $$('[data-year]').forEach((sel) => { sel.value = state.annee; });
-    $$('[data-parcours]').forEach((sel) => { sel.value = state.parcours; });
+    $$('[data-menu-value]').forEach((el) => { const k = el.dataset.menuValue; el.textContent = MENUS[k].label(state[k]); });
     $$('[data-search]').forEach((input) => { if (input.value !== state.q) input.value = state.q; });
 
     const changed = changedCount();
@@ -459,14 +462,82 @@
     if (show) $('button', menu).focus();
   }
 
+  /* ---------- Menus d’options (année, parcours) ---------- */
+  let menuTrigger = null;
+  let menuAnchor = 0;
+  function closeMenu(refocus) {
+    if (!menuTrigger) return;
+    const t = menuTrigger;
+    $('[data-options-menu]').hidden = true;
+    t.setAttribute('aria-expanded', 'false');
+    menuTrigger = null;
+    if (refocus) t.focus();
+  }
+  function openMenu(trigger) {
+    closeMenu();
+    const menu = $('[data-options-menu]');
+    renderMenu(trigger.dataset.menu);
+    menu.hidden = false;
+    menuTrigger = trigger;
+    trigger.setAttribute('aria-expanded', 'true');
+
+    // Sous le déclencheur, au-dessus s’il manque de place ; aligné à droite
+    // dans une ligne large, à gauche sous une capsule.
+    const r = trigger.getBoundingClientRect();
+    menuAnchor = r.top;
+    const gap = 8;
+    const margin = 16;
+    menu.style.cssText = `min-width: ${Math.max(220, Math.min(r.width, 280))}px; max-width: ${window.innerWidth - margin * 2}px;`;
+    const width = menu.offsetWidth;
+    const below = window.innerHeight - r.bottom - gap - margin;
+    const above = r.top - gap - margin;
+    const down = below >= Math.min(menu.scrollHeight, 320) || below >= above;
+    const right = width < r.width;
+    menu.dataset.placement = down ? 'bottom' : 'top';
+    menu.dataset.align = right ? 'right' : 'left';
+    menu.style.maxHeight = `${Math.max(down ? below : above, 132)}px`;
+    if (down) menu.style.top = `${r.bottom + gap}px`;
+    else menu.style.bottom = `${window.innerHeight - r.top + gap}px`;
+    if (right) menu.style.right = `${window.innerWidth - r.right}px`;
+    else menu.style.left = `${Math.max(margin, Math.min(r.left, window.innerWidth - width - margin))}px`;
+
+    const current = $('[aria-selected="true"]', menu);
+    current.focus({ preventScroll: true });
+    menu.scrollTop = Math.max(0, current.offsetTop + current.offsetHeight - menu.clientHeight + 6);
+  }
+  $('[data-options-menu]').addEventListener('keydown', (e) => {
+    const items = $$('.menu-item', e.currentTarget);
+    const i = items.indexOf(document.activeElement);
+    let next = null;
+    if (e.key === 'ArrowDown') next = items[Math.min(i + 1, items.length - 1)];
+    else if (e.key === 'ArrowUp') next = items[Math.max(i - 1, 0)];
+    else if (e.key === 'Home') next = items[0];
+    else if (e.key === 'End') next = items[items.length - 1];
+    else if (e.key === 'Tab') { e.preventDefault(); closeMenu(true); return; }
+    if (next) { e.preventDefault(); next.focus(); }
+  });
+  window.addEventListener('resize', () => closeMenu());
+  // Le menu suit son déclencheur : il se ferme si celui-ci défile.
+  document.addEventListener('scroll', () => {
+    if (menuTrigger && Math.abs(menuTrigger.getBoundingClientRect().top - menuAnchor) > 1) closeMenu();
+  }, true);
+
   /* ---------- Événements ---------- */
   document.addEventListener('click', (e) => {
     const t = e.target.closest('button');
     if (!t) {
       if (!e.target.closest('[data-layers-menu]')) toggleLayersMenu(false);
+      if (!e.target.closest('[data-options-menu]')) closeMenu();
       return;
     }
     if (!t.closest('[data-layers-menu]') && t.dataset.action !== 'layers') toggleLayersMenu(false);
+    if (t.dataset.option !== undefined) {
+      state[menuTrigger.dataset.menu] = t.dataset.option;
+      closeMenu(true);
+      return update();
+    }
+    if (t.dataset.menu) return menuTrigger === t ? closeMenu() : openMenu(t);
+    closeMenu();
 
     if (t.dataset.cycle) {
       const k = t.dataset.cycle;
@@ -526,6 +597,7 @@
   $('[data-filters-scrim]').addEventListener('click', () => openFilters(false));
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if (menuTrigger) return closeMenu(true);
     if (!$('[data-layers-menu]').hidden) return toggleLayersMenu(false);
     if (!$('[data-filters-sheet]').hidden) return openFilters(false);
     if (state.sel !== null) setSelection(null);
@@ -542,12 +614,9 @@
       if (e.key === 'Enter' && !DESKTOP.matches) { input.blur(); setSheet('full'); }
     });
   });
-  document.addEventListener('change', (e) => {
-    if (e.target.matches('[data-year]')) { state.annee = e.target.value; update(); }
-    if (e.target.matches('[data-parcours]')) { state.parcours = e.target.value; update(); }
-  });
   map.on('click', () => {
     toggleLayersMenu(false);
+    closeMenu();
     if (!DESKTOP.matches && document.body.dataset.sheet === 'full') setSheet('peek');
   });
   window.addEventListener('hashchange', () => {
@@ -585,8 +654,6 @@
       YEARS = [...new Set(STAGES.map((s) => s.annee))].filter(Boolean).sort().reverse();
       PARCOURS = [...new Set(STAGES.map((s) => s.parcours).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
       if (data.generated) $('[data-generated]').textContent = `, mises à jour le ${new Date(data.generated).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-      renderYears();
-      renderParcours();
       const id = readHash();
       update();
       if (id !== null) setSelection(id, { reveal: true, zoom: 9 });
