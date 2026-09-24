@@ -3,8 +3,8 @@
 // Sans argument, le fichier est téléchargé depuis l'API publique de macarte.
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { tagsFor } from './tags.mjs';
 
 const MAP_ID = 'R3wixb';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -120,14 +120,26 @@ features.forEach((f, i) => {
     pays: COUNTRY_FIX[org] || country(p.entreprisePays),
     lat: Math.round(lat * 1e5) / 1e5,
     lon: Math.round(lon * 1e5) / 1e5,
-    tags: tagsFor(sujet)
+    tags: []
   });
 });
 
 // Stages ajoutés à la main, absents de la carte d'origine : ils survivent à chaque reconstruction.
 let AJOUTS = [];
 try { AJOUTS = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'stages-ajouts.json'), 'utf8')); } catch {}
-AJOUTS.forEach((s) => stages.push({ ...s, structure: s.structure || structure(s.org), tags: tagsFor(s.sujet) }));
+AJOUTS.forEach((s) => stages.push({ ...s, structure: s.structure || structure(s.org), tags: [] }));
+
+// Tags attribués par le modèle (python3 scripts/tag_with_mistral.py), gardés dans data/tags.json.
+// Un stage nouveau ou dont le sujet ou la structure a changé reste sans tag jusqu'au prochain passage.
+const empreinte = (s) => crypto.createHash('sha1').update(`${s.sujet || ''}\n${s.org || ''}`).digest('hex').slice(0, 12);
+let TAGS_CACHE = { stages: {} };
+try { TAGS_CACHE = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'tags.json'), 'utf8')); } catch {}
+let aTagger = 0;
+stages.forEach((s) => {
+  const e = TAGS_CACHE.stages[s.id];
+  if (e && e.empreinte === empreinte(s)) s.tags = e.tags;
+  else aTagger++;
+});
 
 stages.sort((a, b) => b.annee.localeCompare(a.annee) || a.org.localeCompare(b.org, 'fr'));
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
@@ -138,3 +150,4 @@ console.log(`${stages.length} stages écrits dans ${path.relative(ROOT, OUT)}`);
 console.log('structure', count('structure'));
 console.log('cycle', count('cycle'));
 console.log('annee', count('annee'));
+if (aTagger) console.log(`${aTagger} stages sans tags à jour : lancer python3 scripts/tag_with_mistral.py`);
