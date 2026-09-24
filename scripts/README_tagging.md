@@ -1,6 +1,6 @@
 # Attribution des tags avec Mistral
 
-`tag_with_mistral.py` est la seule source des tags des stages. Il soumet le sujet et la structure de chaque stage à un modèle Mistral, qui choisit ses tags dans un vocabulaire fermé de 31 tags : 14 techniques (méthodes et outils employés) et 17 domaines (secteur d'application).
+`tag_with_mistral.py` est la seule source des tags des stages. Il soumet le sujet et la structure de chaque stage à un modèle Mistral, qui choisit ses tags dans un vocabulaire fermé de 32 tags : 15 techniques (méthodes et outils employés) et 17 domaines (secteur d'application).
 
 Le script n'a besoin que de Python 3.9 ou plus récent, sans dépendance à installer.
 

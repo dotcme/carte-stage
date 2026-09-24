@@ -49,7 +49,8 @@ except FileNotFoundError:
 # tag, fait retagger tous les stages au lancement suivant.
 TECHNIQUES = {
     "sig": "Systèmes d'information géographique : QGIS, ArcGIS, PostGIS, WebSIG, bases de données géographiques, analyse spatiale, géocodage",
-    "geodesie": "Géodésie et topométrie : GNSS/GPS, référentiels de coordonnées, nivellement, gravimétrie, levés topographiques, station totale, auscultation de déformations, cadastre et travaux de géomètre-expert",
+    "geodesie": "Géodésie : positionnement GNSS/GPS, référentiels et systèmes de coordonnées, géoïde, gravimétrie, réseaux géodésiques, mesure des déformations de la croûte (InSAR, GNSS permanent), métrologie de précision",
+    "topometrie": "Topométrie et topographie de terrain : levés topographiques, station totale, nivellement, implantation, auscultation d'ouvrages, plans de récolement, bornage, cadastre, travaux en cabinet de géomètre-expert",
     "teledetection": "Télédétection : images satellites (Sentinel, Landsat, Pléiades, SPOT), radar/SAR/InSAR, images aériennes ou de drone analysées pour observer la Terre, indices spectraux",
     "photogrammetrie": "Photogrammétrie : restitution 3D ou orthophotos à partir de photos (aériennes, drone, terrestres), aérotriangulation, stéréoscopie, corrélation d'images",
     "ia": "Intelligence artificielle : apprentissage automatique ou profond, réseaux de neurones, segmentation ou classification par apprentissage, modèles de langage",
@@ -86,7 +87,8 @@ TAGS = {**TECHNIQUES, **DOMAINES}
 
 EXEMPLES = [
     ("Développement d'un plugin QGIS pour le suivi des haies", "Parc naturel régional du Vexin", ["sig", "dev", "environnement"]),
-    ("Levés topographiques et implantation", "Cabinet de géomètre-expert", ["geodesie"]),
+    ("Levés topographiques et implantation", "Cabinet de géomètre-expert", ["topometrie"]),
+    ("Calcul de séries temporelles GNSS pour le suivi de la subsidence", "Laboratoire de géodésie", ["geodesie", "risques"]),
     ("Détection des bâtiments par deep learning sur images Pléiades", "IGN", ["ia", "teledetection", "urbanisme"]),
     ("Stage de fin d'études", "Keolis", ["mobilite"]),
     ("Consultant données", "Cabinet de conseil", []),

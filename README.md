@@ -2,7 +2,7 @@
 
 Carte interactive des stages réalisés par les étudiantes et étudiants de Géodata Paris, de 2016-2017 à 2025-2026. Elle reprend la [carte publiée sur macarte](https://macarte.ign.fr/carte/R3wixb/Carte-des-stages-edition-2025) et ajoute :
 
-- des filtres regroupés dans le panneau : année, cycle — qui sert aussi de légende avec le nombre de stages —, parcours de 3e année (sous-catégories à cocher sous « Ingénieur 3e année »), type de structure (laboratoire, entreprise, service public), lieu (une liste déroulante : partout ; étranger et outre-mer, puis France hexagonale, Corse comprise ; puis les autres pays par ordre alphabétique — un stage noté « France » mais situé outre-mer ne compte pas dans la France hexagonale) et tags (14 techniques comme SIG ou télédétection, 17 domaines comme eau ou urbanisme) ;
+- des filtres regroupés dans le panneau : année, cycle — qui sert aussi de légende avec le nombre de stages —, parcours de 3e année (sous-catégories à cocher sous « Ingénieur 3e année »), type de structure (laboratoire, entreprise, service public), lieu (une liste déroulante : partout ; étranger et outre-mer, puis France hexagonale, Corse comprise ; puis les autres pays par ordre alphabétique — un stage noté « France » mais situé outre-mer ne compte pas dans la France hexagonale) et tags (15 techniques comme SIG ou télédétection, 17 domaines comme eau ou urbanisme) ;
 - une recherche par ville, structure ou sujet ;
 - les chiffres clés des stages affichés : nombre, pays, stages à l’étranger ;
 - la liste des stages affichés, classée par année et synchronisée avec la carte — sur ordinateur, elle s'ouvre par un bouton ou en appuyant sur Entrée dans la recherche, dans un panneau à côté des filtres ; sur mobile, dans la feuille du bas, qu'on agrandit en la touchant ou en la faisant glisser ;
@@ -56,7 +56,7 @@ python3 scripts/tag_with_mistral.py
 
 Le script (Python 3.9 ou plus récent, sans dépendance) ne soumet que les stages nouveaux ou dont le sujet ou la structure a changé. Il garde les réponses dans `data/tags.json` et écrit les tags dans `data/stages.json`. Il faut donc le lancer après chaque `node scripts/build-data.mjs` qui annonce des stages sans tags à jour. On peut aussi utiliser un modèle local, sans compte, avec [Ollama](https://ollama.com) : `ollama pull mistral-nemo`, puis `python3 scripts/tag_with_mistral.py --moteur ollama`. Voir `scripts/README_tagging.md`.
 
-Le vocabulaire (31 tags, chacun avec une description qui guide le modèle) est dans le script ; les libellés affichés sont dans `assets/app.js`. Modifier le vocabulaire ou les consignes fait retagger tous les stages au lancement suivant.
+Le vocabulaire (32 tags, chacun avec une description qui guide le modèle) est dans le script ; les libellés affichés sont dans `assets/app.js`. Modifier le vocabulaire ou les consignes fait retagger tous les stages au lancement suivant.
 
 ## Publier une modification du site
 
