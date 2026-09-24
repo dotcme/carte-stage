@@ -8,14 +8,14 @@ Le script n'a besoin que de Python 3.9 ou plus récent, sans dépendance à inst
 
 ### L'API Mistral (par défaut)
 
-L'offre gratuite « Experiment » de Mistral donne accès à l'API avec un débit limité : il suffit de créer un compte sur [console.mistral.ai](https://console.mistral.ai), de choisir cette offre et de créer une clé.
+L'offre gratuite « Experiment » de Mistral donne accès à l'API avec un débit limité : il suffit de créer un compte sur [console.mistral.ai](https://console.mistral.ai), de choisir cette offre et de créer une clé. Placez-la dans un fichier `.env` à la racine du dépôt (il est ignoré par git), ou dans la variable d'environnement du même nom :
 
 ```sh
-export MISTRAL_API_KEY="votre_clé"
+echo 'MISTRAL_API_KEY=votre_clé' > .env
 python3 scripts/tag_with_mistral.py
 ```
 
-Le modèle par défaut est `mistral-small-latest`. Le script envoie les stages par lots de 10, attend 1,5 s entre deux requêtes et, s'il reçoit une limite de débit (erreur 429) ou une erreur du serveur, réessaie en attendant de plus en plus longtemps. Les 1 127 stages demandent 113 requêtes.
+Le modèle par défaut est `ministral-14b-latest` : avec l'offre gratuite, il accepte 30 requêtes par minute, alors que `mistral-small` et `mistral-medium` y sont fermés (0 requête par minute ; le script le signale au lieu d'insister). Le script envoie les stages par lots de 10, attend 2,5 s entre deux requêtes et, s'il reçoit une limite de débit (erreur 429) ou une erreur du serveur, réessaie en attendant de plus en plus longtemps. Les 1 127 stages demandent 113 requêtes.
 
 ### Un modèle local avec Ollama
 
@@ -43,11 +43,11 @@ Sur une machine modeste, `--modele mistral` (7 milliards de paramètres, environ
 | Option | Rôle |
 |---|---|
 | `--moteur mistral\|ollama` | API Mistral (par défaut) ou modèle local servi par Ollama |
-| `--modele NOM` | défaut : `mistral-small-latest` (API) ou `mistral-nemo` (Ollama) |
-| `--cle CLÉ` | clé de l'API, à la place de `MISTRAL_API_KEY` |
+| `--modele NOM` | défaut : `ministral-14b-latest` (API) ou `mistral-nemo` (Ollama) |
+| `--cle CLÉ` | clé de l'API, à la place de `MISTRAL_API_KEY` (environnement ou `.env`) |
 | `--url URL` | adresse du service, par exemple une instance Ollama sur une autre machine |
 | `--lot N` | stages par requête (défaut : 10) |
-| `--pause S` | secondes entre deux requêtes (défaut : 1,5 pour l'API, 0 pour Ollama) |
+| `--pause S` | secondes entre deux requêtes (défaut : 2,5 pour l'API, 0 pour Ollama) |
 | `--tout` | retagger tous les stages, même ceux qui sont à jour |
 | `--ids A,B` | retagger ces stages seulement |
 | `--limite N` | traiter au plus N stages |

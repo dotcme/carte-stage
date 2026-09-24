@@ -7,7 +7,7 @@ du sujet et de la structure : seuls les stages nouveaux ou modifiés sont soumis
 lancement suivant, et scripts/build-data.mjs reprend les tags de ce fichier.
 
 Deux moteurs gratuits :
-  - l'API Mistral, avec l'offre gratuite « Experiment » (clé dans MISTRAL_API_KEY) ;
+  - l'API Mistral, avec l'offre gratuite « Experiment » (clé MISTRAL_API_KEY, dans l'environnement ou .env) ;
   - un modèle local servi par Ollama (https://ollama.com), sans compte ni clé.
 
 Utilisation :
@@ -34,6 +34,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 STAGES_FILE = ROOT / "data" / "stages.json"
 CACHE_FILE = ROOT / "data" / "tags.json"
+
+# Variables lues dans .env (ignoré par git), par exemple MISTRAL_API_KEY=… ; l'environnement l'emporte.
+try:
+    for ligne in (ROOT / ".env").read_text(encoding="utf-8").splitlines():
+        cle, sep, valeur = ligne.partition("=")
+        if sep and not cle.strip().startswith("#"):
+            os.environ.setdefault(cle.strip(), valeur.strip().strip("\"'"))
+except FileNotFoundError:
+    pass
 
 # Vocabulaire des tags. Les clés doivent rester celles de TAGS dans assets/app.js, qui
 # porte leurs libellés. Les descriptions guident le modèle : les modifier, ou ajouter un
@@ -155,6 +164,9 @@ def avec_reprises(appel, essais=6):
             return appel()
         except urllib.error.HTTPError as e:
             corps = e.read().decode("utf-8", "replace")[:300]
+            if e.code == 429 and e.headers.get("x-ratelimit-limit-req-minute") == "0":
+                raise ErreurModele("ce modèle n'est pas ouvert à cette clé (0 requête par minute) : "
+                                   "essayer --modele ministral-14b-latest") from e
             if e.code not in (408, 429, 500, 502, 503, 504) or n == essais - 1:
                 raise ErreurModele(f"HTTP {e.code} : {corps}") from e
             attente = float(e.headers.get("Retry-After") or 0) or 2 ** (n + 1)
@@ -276,12 +288,12 @@ def main():
     p = argparse.ArgumentParser(description="Attribue les tags des stages avec un modèle Mistral.")
     p.add_argument("--moteur", choices=["mistral", "ollama"], default="mistral",
                    help="API Mistral (offre gratuite, par défaut) ou modèle local servi par Ollama")
-    p.add_argument("--modele", help="défaut : mistral-small-latest (API) ou mistral-nemo (Ollama)")
+    p.add_argument("--modele", help="défaut : ministral-14b-latest (API) ou mistral-nemo (Ollama)")
     p.add_argument("--cle", default=os.environ.get("MISTRAL_API_KEY"),
                    help="clé de l'API Mistral (défaut : variable MISTRAL_API_KEY)")
     p.add_argument("--url", help="adresse du service (défaut : API Mistral, ou Ollama sur localhost:11434)")
     p.add_argument("--lot", type=int, default=10, help="stages envoyés par requête (défaut : 10)")
-    p.add_argument("--pause", type=float, help="secondes entre deux requêtes (défaut : 1.5 pour l'API, 0 pour Ollama)")
+    p.add_argument("--pause", type=float, help="secondes entre deux requêtes (défaut : 2.5 pour l'API, 0 pour Ollama)")
     p.add_argument("--delai", type=float, default=180, help="délai d'attente d'une réponse, en secondes")
     p.add_argument("--tout", action="store_true", help="retagger tous les stages, même à jour")
     p.add_argument("--ids", help="retagger ces stages seulement (identifiants séparés par des virgules)")
@@ -290,9 +302,9 @@ def main():
     args = p.parse_args()
 
     if args.moteur == "mistral":
-        args.modele = args.modele or "mistral-small-latest"
+        args.modele = args.modele or "ministral-14b-latest"
         args.url = args.url or "https://api.mistral.ai/v1/chat/completions"
-        args.pause = 1.5 if args.pause is None else args.pause
+        args.pause = 2.5 if args.pause is None else args.pause
         appel = appel_mistral
     else:
         args.modele = args.modele or "mistral-nemo"

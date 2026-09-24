@@ -50,7 +50,7 @@ Ce classement automatique peut se tromper. Pour corriger une structure, ajoutez 
 Les tags sont choisis par un modèle de langage Mistral, qui lit le sujet et la structure de chaque stage :
 
 ```sh
-export MISTRAL_API_KEY=…   # clé gratuite de l'offre « Experiment » de Mistral
+echo 'MISTRAL_API_KEY=…' > .env   # clé gratuite de l'offre « Experiment » de Mistral ; .env est ignoré par git
 python3 scripts/tag_with_mistral.py
 ```
 
