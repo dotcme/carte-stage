@@ -1,138 +1,62 @@
-# Tagging des stages avec Mistral
+# Attribution des tags avec Mistral
 
-Ce dossier contient des scripts pour attribuer automatiquement des tags aux stages en utilisant des modèles de langage Mistral.
+`tag_with_mistral.py` est la seule source des tags des stages. Il soumet le sujet et la structure de chaque stage à un modèle Mistral, qui choisit ses tags dans un vocabulaire fermé de 32 tags : 15 techniques (méthodes et outils employés) et 17 domaines (secteur d'application).
 
-## Script principal : `tag_with_mistral.py`
+Le script n'a besoin que de Python 3.9 ou plus récent, sans dépendance à installer.
 
-Ce script permet d'attribuer des tags aux stages en utilisant soit :
-- **L'API Mistral** (recommandé pour une utilisation rapide)
-- **Un modèle local** (pour une utilisation hors ligne, nécessite du GPU)
+## Deux moteurs gratuits
 
-### Prérequis
+### L'API Mistral (par défaut)
 
-#### Pour l'API Mistral (cloud) :
-```bash
-pip install httpx
+L'offre gratuite « Experiment » de Mistral donne accès à l'API avec un débit limité : il suffit de créer un compte sur [console.mistral.ai](https://console.mistral.ai), de choisir cette offre et de créer une clé. Placez-la dans un fichier `.env` à la racine du dépôt (il est ignoré par git), ou dans la variable d'environnement du même nom :
+
+```sh
+echo 'MISTRAL_API_KEY=votre_clé' > .env
+python3 scripts/tag_with_mistral.py
 ```
 
-Vous aurez besoin d'une **clé API Mistral** (gratuit pour les premiers tests) :
-- Inscrivez-vous sur [Mistral AI](https://mistral.ai/)
-- Récupérez votre clé API dans les paramètres de votre compte
+Le modèle par défaut est `ministral-14b-latest` : avec l'offre gratuite, il accepte 30 requêtes par minute, alors que `mistral-small` et `mistral-medium` y sont fermés (0 requête par minute ; le script le signale au lieu d'insister). Le script envoie les stages par lots de 10, attend 2,5 s entre deux requêtes et, s'il reçoit une limite de débit (erreur 429) ou une erreur du serveur, réessaie en attendant de plus en plus longtemps. Les 1 127 stages demandent 113 requêtes.
 
-#### Pour les modèles locaux :
-```bash
-pip install torch transformers accelerate
+### Un modèle local avec Ollama
+
+Sans compte ni clé, et sans que les sujets quittent la machine. Il faut installer [Ollama](https://ollama.com), puis :
+
+```sh
+ollama pull mistral-nemo          # 12 milliards de paramètres, environ 7 Go
+python3 scripts/tag_with_mistral.py --moteur ollama
 ```
 
-Modèles recommandés (nécessitent ~15-30 Go de VRAM) :
-- `mistralai/Mistral-7B-v0.1` (7B paramètres)
-- `mistralai/Mistral-7B-Instruct-v0.1` (meilleur pour le suivi d'instructions)
+Sur une machine modeste, `--modele mistral` (7 milliards de paramètres, environ 4 Go) va plus vite, mais classe moins bien. Avec un petit modèle, des lots plus petits (`--lot 5`) donnent des réponses plus fiables.
 
-### Tags disponibles
+## Ce que fait le script
 
-Le script utilise **32 tags** organisés en 2 catégories :
+1. Il lit `data/stages.json` et `data/tags.json`, le fichier des réponses déjà obtenues.
+2. Il retient les stages à tagger : ceux qui sont absents de `data/tags.json`, et ceux dont le sujet ou la structure a changé depuis. Chaque réponse est gardée avec une empreinte de ce texte.
+3. Il envoie ces stages par lots. Les consignes contiennent le vocabulaire, une description de chaque tag, les règles d'attribution et quelques exemples. Le modèle répond en JSON (`{"resultats": [{"n": 1, "tags": [...]}]}`), avec une température à 0 pour que les réponses soient reproductibles.
+4. Il contrôle chaque réponse. Seules les clés exactes du vocabulaire sont retenues : les majuscules, les accents et les guillemets sont tolérés, et les autres tags sont écartés et signalés. Un stage qui manque dans la réponse, ou un lot en erreur, est laissé de côté et repris au lancement suivant ; le script se termine alors avec le code 1.
+5. Il enregistre `data/tags.json` après chaque lot : un arrêt ne perd rien. À la fin, il écrit les tags dans `data/stages.json` et affiche combien de stages porte chaque tag.
 
-**Techniques (15)** :
-- `sig`, `geodesie`, `teledetection`, `photogrammetrie`, `ia`
-- `lidar`, `modelisation3d`, `imagerie`, `geomatique`, `geostatistique`
-- `hydrographie`, `dev`, `bigdata`, `iot`, `cloud`
+`node scripts/build-data.mjs` reprend les tags de `data/tags.json`. Il laisse sans tag les stages nouveaux ou modifiés et indique combien il en reste à traiter.
 
-**Domaines (17)** :
-- `cartographie`, `environnement`, `urbanisme`, `agriculture`, `eau`
-- `littoral`, `mobilite`, `energie`, `sante`, `patrimoine`
-- `risques`, `geologie`, `climat`, `defense`, `tourisme`, `industrie`, `mines`
+## Options
 
-### Utilisation
+| Option | Rôle |
+|---|---|
+| `--moteur mistral\|ollama` | API Mistral (par défaut) ou modèle local servi par Ollama |
+| `--modele NOM` | défaut : `ministral-14b-latest` (API) ou `mistral-nemo` (Ollama) |
+| `--cle CLÉ` | clé de l'API, à la place de `MISTRAL_API_KEY` (environnement ou `.env`) |
+| `--url URL` | adresse du service, par exemple une instance Ollama sur une autre machine |
+| `--lot N` | stages par requête (défaut : 10) |
+| `--pause S` | secondes entre deux requêtes (défaut : 2,5 pour l'API, 0 pour Ollama) |
+| `--tout` | retagger tous les stages, même ceux qui sont à jour |
+| `--ids A,B` | retagger ces stages seulement |
+| `--limite N` | traiter au plus N stages |
+| `--essai` | afficher les tags proposés sans rien écrire |
 
-#### Mode test (sans API, avec mock) :
-```bash
-python scripts/tag_with_mistral.py --dry-run
-```
+Pour évaluer un modèle ou des consignes avant de tout relancer, commencez par un essai : `python3 scripts/tag_with_mistral.py --essai --tout --limite 30`.
 
-Traite 5 stages avec un système de mock basé sur des mots-clés.
+## Modifier le vocabulaire
 
-#### Avec l'API Mistral :
-```bash
-# Traiter tous les stages
-export MISTRAL_API_KEY="votre_clé_api"
-python scripts/tag_with_mistral.py --api-key $MISTRAL_API_KEY
+Le vocabulaire est défini dans `TECHNIQUES` et `DOMAINES`, en tête du script. Les clés doivent rester celles de `TAGS` dans `assets/app.js`, qui porte les libellés affichés sur le site : un nouveau tag s'ajoute aux deux endroits, puis on lance `node scripts/version.mjs`. Les descriptions guident le modèle : pour corriger une confusion fréquente, précisez la description concernée plutôt que d'ajouter une règle.
 
-# Traiter un sous-ensemble (stages 0 à 100)
-python scripts/tag_with_mistral.py --api-key $MISTRAL_API_KEY --start 0 --end 100
-
-# Avec un modèle spécifique
-python scripts/tag_with_mistral.py --api-key $MISTRAL_API_KEY --model mistral-small
-```
-
-#### Avec un modèle local :
-```bash
-# Premier lancement : télécharge le modèle (peut prendre du temps)
-python scripts/tag_with_mistral.py --local --model mistralai/Mistral-7B-Instruct-v0.1 --start 0 --end 10
-
-# Lancement suivant : le modèle est déjà en cache
-python scripts/tag_with_mistral.py --local --start 10 --end 20
-```
-
-### Sortie
-
-Les résultats sont sauvegardés dans `data/stages_mistral_tags.json` (par défaut) avec la structure :
-
-```json
-[
-  {
-    "id": "2025-ajout-01",
-    "sujet": "Sujet du stage",
-    "org": "Organisation",
-    "existing_tags": ["tag1", "tag2"],
-    "mistral_tags": ["tag1", "tag3"],
-    "response": "Réponse brute du modèle"
-  },
-  ...
-]
-```
-
-### Statistiques
-
-Le script affiche des statistiques après traitement :
-- Nombre de stages traités
-- Nombre de correspondances exactes avec les tags existants
-- Top 10 des tags attribués par Mistral
-
-### Conseils
-
-1. **Rate limiting** : L'API Mistral a des limites de rate. Utilisez `--batch-size 1` et le script fait déjà une pause de 0.5s entre chaque requête.
-
-2. **Coût** : L'API Mistral est gratuite pour les premiers tests, puis payante. Vérifiez les tarifs sur [mistral.ai](https://mistral.ai/).
-
-3. **Modèles locaux** : Pour traiter tous les 1127 stages avec un modèle local, prévoyez plusieurs heures (selon votre GPU).
-
-4. **Validation** : Les résultats doivent être validés manuellement, surtout pour les stages ambigus.
-
-### Personnalisation
-
-Vous pouvez modifier les tags et leurs descriptions dans le script :
-- `ALL_TAGS` : Liste complète des 32 tags
-- `TAG_DESCRIPTIONS` : Descriptions détaillées de chaque tag
-- `build_prompt()` : Modifiez le prompt pour adapter le comportement du modèle
-
-### Exemple de prompt
-
-Le script utilise ce format de prompt :
-
-```
-Tu es un expert en géomatique. Analyse le stage suivant et attribue-lui les tags les plus pertinents.
-
-Stage : [SUJET] - [ORGANISATION]
-
-Tags disponibles : `sig`, `geodesie`, `teledetection`, ...
-
-Instructions :
-- Sélectionne UNIQUEMENT les tags qui correspondent au stage
-- Réponds avec une liste de tags séparés par des virgules, sans espace
-- Ne réponds que par la liste des tags, sans explication ni commentaire
-- Si aucun tag ne correspond, réponds par "aucun"
-```
-
-### Dépendances
-
-Voir `requirements_tagging.txt` pour les dépendances Python.
+Le texte des consignes a une empreinte, gardée dans `data/tags.json`. Toute modification du vocabulaire, des descriptions, des règles ou des exemples change cette empreinte, et le lancement suivant retagge alors tous les stages.
