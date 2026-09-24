@@ -502,6 +502,13 @@
   /* ---------- Liste et carte ---------- */
   let visible = [];
   let listLimit = 200;
+  let shownKey = null;
+  let markerFade = null;
+
+  function fadeInMarkers() {
+    if (markerFade) markerFade.cancel();
+    markerFade = map.getPane('markerPane').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+  }
 
   function update(options) {
     const opts = options || {};
@@ -524,8 +531,14 @@
 
     if (state.sel !== null && !visible.some((s) => s.id === state.sel)) setSelection(null, { silent: true });
 
-    clusters.clearLayers();
-    clusters.addLayers(visible.map((s) => markers.get(s.id)));
+    // Les épingles ne sont reconstruites que si l'ensemble affiché change ; elles reviennent alors en fondu.
+    const key = visible.map((s) => s.id).join();
+    if (key !== shownKey) {
+      shownKey = key;
+      clusters.clearLayers();
+      clusters.addLayers(visible.map((s) => markers.get(s.id)));
+      fadeInMarkers();
+    }
 
     if (!opts.keepLimit) listLimit = 200;
     renderList();
@@ -572,7 +585,7 @@
       html = rows.join('');
     }
     // Deux contenants partagent la même liste : le panneau adjacent (bureau) et la feuille (mobile).
-    $$('[data-list]').forEach((list) => { list.innerHTML = html; });
+    $$('[data-list]').forEach((list) => { list.innerHTML = html; list.removeAttribute('aria-busy'); });
   }
 
   /* ---------- Panneau de la liste des stages (bureau) ---------- */
@@ -594,8 +607,12 @@
   }
 
   /* ---------- Modes d’affichage ---------- */
+  // Sur mobile, la fiche arrive par la droite et la liste revient par la gauche, comme une navigation.
   function showView(name) {
-    $$('[data-view]').forEach((v) => { v.hidden = v.dataset.view !== name; });
+    const shown = $(`[data-view="${name}"]`);
+    if (!shown.hidden) return;
+    $$('[data-view]').forEach((v) => { v.hidden = v !== shown; v.classList.remove('view-push', 'view-pop'); });
+    if (!DESKTOP.matches) shown.classList.add(name === 'detail' ? 'view-push' : 'view-pop');
   }
 
   /* ---------- Fiche ---------- */
@@ -1202,6 +1219,14 @@
   setSheet('peek');
   map.fitBounds(EUROPE, mapPadding());
 
+  // En attendant les données : des lignes fantômes, fixes, à la place de la liste et du titre de la feuille.
+  const skeletonRow = '<div class="item skeleton"><span class="bone pin-bone"></span><span class="item-text"><span class="bone"></span><span class="bone short"></span></span></div>';
+  $$('[data-list]').forEach((list) => {
+    list.setAttribute('aria-busy', 'true');
+    list.innerHTML = skeletonRow.repeat(6);
+  });
+  $$('.sheet-title [data-count], .sheet-title [data-summary]').forEach((el) => { el.innerHTML = '<span class="bone"></span>'; });
+
   // Revalidé auprès du serveur à chaque visite : les stages ajoutés s'affichent sans attendre l'expiration du cache.
   fetch('data/stages.json', { cache: 'no-cache' })
     .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
@@ -1233,6 +1258,8 @@
       if (id !== null) setSelection(id, { reveal: true, zoom: 9 });
     })
     .catch(() => {
-      $$('[data-list]').forEach((list) => { list.innerHTML = '<div class="empty"><strong>Stages indisponibles</strong><span>Le fichier des stages n’a pas pu être chargé. Rechargez la page.</span></div>'; });
+      $('.sheet-title [data-summary]').textContent = '';
+      $('.sheet-title [data-count]').textContent = '';
+      $$('[data-list]').forEach((list) => { list.removeAttribute('aria-busy'); list.innerHTML = '<div class="empty"><strong>Stages indisponibles</strong><span>Le fichier des stages n’a pas pu être chargé. Rechargez la page.</span></div>'; });
     });
 })();
