@@ -13,16 +13,20 @@
     public: { label: 'Service public', long: 'Service public ou collectivité' }
   };
   const TYPES = { Pluri: 'Stage pluridisciplinaire', TFE: 'Travail de fin d’études' };
-  // Tags des stages (générés par scripts/tags.mjs) : 10 techniques et 9 domaines d’application.
+  // Tags des stages (générés par scripts/tags.mjs) : 15 techniques/méthodes et 17 domaines d’application.
   const TAGS = {
     techniques: {
-      geodesie: 'Géodésie', cartographie: 'Cartographie', teledetection: 'Télédétection', sig: 'SIG',
-      photogrammetrie: 'Photogrammétrie', lasergrammetrie: 'Lasergrammétrie', topometrie: 'Topométrie',
-      dev: 'Développement', modelisation3d: 'Modélisation 3D', ia: 'IA'
+      sig: 'SIG', geodesie: 'Géodésie', teledetection: 'Télédétection', photogrammetrie: 'Photogrammétrie',
+      ia: 'IA', lidar: 'LiDAR', modelisation3d: 'Modélisation 3D', imagerie: 'Imagerie',
+      geomatique: 'Géomatique', geostatistique: 'Géostatistique', hydrographie: 'Hydrographie',
+      dev: 'Développement', bigdata: 'Big Data', iot: 'IoT', cloud: 'Cloud'
     },
     domaines: {
-      eau: 'Eau', environnement: 'Environnement', urbanisme: 'Urbanisme', agriculture: 'Agriculture',
-      littoral: 'Littoral', mobilite: 'Mobilité', patrimoine: 'Patrimoine', risques: 'Risques', energie: 'Énergie'
+      cartographie: 'Cartographie', environnement: 'Environnement', urbanisme: 'Urbanisme',
+      agriculture: 'Agriculture', eau: 'Eau', littoral: 'Littoral', mobilite: 'Mobilité',
+      energie: 'Énergie', sante: 'Santé', patrimoine: 'Patrimoine', risques: 'Risques',
+      geologie: 'Géologie', climat: 'Climat', defense: 'Défense', tourisme: 'Tourisme',
+      industrie: 'Industrie', mines: 'Mines'
     }
   };
   const TAG_KEYS = Object.keys(TAGS.techniques).concat(Object.keys(TAGS.domaines));
