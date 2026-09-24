@@ -13,12 +13,12 @@
     public: { label: 'Service public', long: 'Service public ou collectivité' }
   };
   const TYPES = { Pluri: 'Stage pluridisciplinaire', TFE: 'Travail de fin d’études' };
-  // Tags des stages (générés par scripts/tags.mjs) : 15 techniques/méthodes et 17 domaines d’application.
+  // Tags des stages (générés par scripts/tags.mjs) : 14 techniques/méthodes et 17 domaines d’application.
   const TAGS = {
     techniques: {
       sig: 'SIG', geodesie: 'Géodésie', teledetection: 'Télédétection', photogrammetrie: 'Photogrammétrie',
       ia: 'IA', lidar: 'LiDAR', modelisation3d: 'Modélisation 3D', imagerie: 'Imagerie',
-      geomatique: 'Géomatique', geostatistique: 'Géostatistique', hydrographie: 'Hydrographie',
+      geostatistique: 'Géostatistique', hydrographie: 'Hydrographie',
       dev: 'Développement', bigdata: 'Big Data', iot: 'IoT', cloud: 'Cloud'
     },
     domaines: {

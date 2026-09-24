@@ -9,7 +9,7 @@
 // ── Tags techniques (méthodologies + informatique) ──
 const TECHNIQUES = [
   // Méthodologies
-  ['sig', /\bsig\b|\bgis\b|webgis|arcgis|qgis|postgis|geodatabase|geomatique|geo.?spatial|donnees spatiales|donnees spatialise|spatial data|information geographique|informatique geographique|geographic information|geographic data|donnees geographiques|analyse spatiale|spatial analysis|geoint|geo.?intelligen|geocodage|geocoding|geolocalisation|\besri\b/],
+  ['sig', /\bsig\b|\bgis\b|webgis|arcgis|qgis|postgis|geodatabase|geo.?spatial|donnees spatiales|donnees spatialise|spatial data|information geographique|informatique geographique|geographic information|geographic data|donnees geographiques|analyse spatiale|spatial analysis|geoint|geo.?intelligen|geocodage|geocoding|geolocalisation|\besri\b/],
   ['geodesie', /geodes|\bgnss\b|\bgps\b|\begnos\b|\bgalileo\b|nivellement|referentiel|\bdatum\b|ellipso|\bgeoide\b|triangulation|gravimet|deformation|topometri|topograph|\bleves?\b|\breleves?\b|geometre|tacheometre|station totale|total station|\btopo\b|\bcabinet\b|cadastre|cadastral|polygonale/],
   ['teledetection', /teledetection|remote sensing|satellit|imagerie|imagery|sentinel|landsat|\bspot\b|insar|\bsar\b|\bradar\b|hyperspectral|multispectral|\bndvi\b|\bmodis\b|microwave|aerien|aerial|drone|\buav\b|\brpas\b|pleiades|earth engine|earth observation|observation de la terre|photointerpret/],
   ['photogrammetrie', /photogrammet|correlation d.images|stereoscop|\bstereo\b|orthophot|orthoimage|\bortho\b|aerotriang/],
@@ -17,7 +17,6 @@ const TECHNIQUES = [
   ['lidar', /lasergrammet|lidar|\btls\b|nuages? de points|point clouds?|acquisition laser|laser scanning|scanner laser|laser scanner/],
   ['modelisation3d', /\b3d\b|city3d|jumeau numerique|digital twin|citygml|cityjson|\bmnt\b|\bmne\b|\bdem\b|\bdsm\b|\bdtm\b|maquette numerique|\bifc\b|\bbim\b|\bmesh(es)?\b|maillage|voxel|modeles? numeriques?/],
   ['imagerie', /traitement d.images?|analyse d.images?|imagerie multispectrale|imagerie hyperspectrale|processing images?|image analysis/],
-  ['geomatique', /\bgeomatique\b/],
   ['geostatistique', /geostatistique|analyse spatiale|interpolation|kriging|krigage/],
   ['hydrographie', /hydrograph|bathymetr|sonar|echo sounder|depth measurement/],
   // Informatique

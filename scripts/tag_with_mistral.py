@@ -7,7 +7,7 @@ Utilisation :
 
 Options :
   --api-key     Clé API Mistral (requise pour l'API cloud)
-  --model       Modèle à utiliser (par défaut: mistral-tiny)
+  --model       Modèle à utiliser (par défaut: mistral-small)
   --output      Fichier de sortie JSON (par défaut: data/stages_mistral_tags.json)
   --start       Index de départ (par défaut: 0)
   --end         Index de fin (par défaut: tous)
@@ -50,7 +50,6 @@ TAG_DESCRIPTIONS = {
     "lidar": "LiDAR, scanning laser, nuage de points",
     "modelisation3d": "Modélisation 3D, BIM, jumeaux numériques",
     "imagerie": "Traitement d'image, analyse d'image, imagerie multispectrale",
-    "geomatique": "Géomatique",
     "geostatistique": "Géostatistique, analyse spatiale, interpolation, kriging",
     "hydrographie": "Hydrographie, bathymétrie, sonar",
     "dev": "Développement logiciel, programmation, applications web/mobile",
@@ -114,7 +113,7 @@ Réponse : sig,dev,environnement
 Stage : """
 
 
-def call_mistral_api(api_key: str, prompt: str, model: str = "mistral-tiny") -> str:
+def call_mistral_api(api_key: str, prompt: str, model: str = "mistral-small") -> str:
     """Appelle l'API Mistral pour obtenir une réponse."""
     import httpx
     
@@ -232,7 +231,7 @@ def parse_tags(response: str) -> List[str]:
 def process_stages(
     stages: List[Dict[str, Any]],
     api_key: str = None,
-    model: str = "mistral-tiny",
+    model: str = "mistral-small",
     use_local: bool = False,
     start_idx: int = 0,
     end_idx: int = None,
@@ -325,8 +324,8 @@ def main():
         description="Attribuer des tags aux stages en utilisant un modèle Mistral"
     )
     parser.add_argument("--api-key", type=str, help="Clé API Mistral")
-    parser.add_argument("--model", type=str, default="mistral-tiny", 
-                        help="Modèle à utiliser (par défaut: mistral-tiny)")
+    parser.add_argument("--model", type=str, default="mistral-small", 
+                        help="Modèle à utiliser (par défaut: mistral-small)")
     parser.add_argument("--output", type=str, default="data/stages_mistral_tags.json",
                         help="Fichier de sortie JSON")
     parser.add_argument("--start", type=int, default=0, help="Index de départ")
