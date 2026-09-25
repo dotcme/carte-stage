@@ -615,16 +615,18 @@ a { color: var(--accent); }
   .searchbar .search { flex: 1; color: var(--label-glass-secondary); }
   .searchbar .search input::placeholder { color: var(--label-glass-secondary); }
 
-  /* Feuille : repliée (peek), fiche (detail) ou pleine hauteur (full) */
+  /* Feuille : repliée (peek), fiche (detail) ou pleine hauteur (full).
+     Bord à bord, jusque sous la barre d'accueil : la marge de sécurité s'ajoute à sa hauteur. */
   .panel {
-    top: auto; left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom) + 8px);
-    width: auto; height: var(--sheet-peek); padding: 0 16px 16px; border-radius: 42px;
+    top: auto; left: 0; right: 0; bottom: 0;
+    width: auto; height: calc(var(--sheet-peek) + env(safe-area-inset-bottom));
+    padding: 0 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 32px 32px 0 0;
     overflow: hidden;
     transition: height 420ms var(--ease-out);
   }
   .panel.dragging { transition: none; }
-  body[data-sheet="full"] .panel { height: calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 84px); }
-  body[data-sheet="detail"] .panel { height: min(540px, calc(100% - 200px)); }
+  body[data-sheet="full"] .panel { height: calc(100% - env(safe-area-inset-top) - 76px); }
+  body[data-sheet="detail"] .panel { height: calc(min(540px, 100% - 200px) + env(safe-area-inset-bottom)); }
   .grabber {
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     width: 100%; height: 22px; padding: 0; border: 0; background: transparent;
@@ -704,9 +706,9 @@ a { color: var(--accent); }
   .scrim { display: block; position: fixed; inset: 0; z-index: 1001; background: var(--scrim); animation: fade-in 280ms var(--ease-out); }
   .filters-sheet {
     position: fixed; z-index: 1002;
-    top: calc(env(safe-area-inset-top) + var(--inset) + 52px + 12px); left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom) + 8px);
+    top: calc(env(safe-area-inset-top) + var(--inset) + 52px + 12px); left: 0; right: 0; bottom: 0;
     display: flex; flex-direction: column; gap: 12px;
-    padding: 0 16px 16px; border-radius: 42px;
+    padding: 0 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 32px 32px 0 0;
     background: var(--bg-sheet); box-shadow: var(--shadow-sheet);
     animation: sheet-in 420ms var(--ease-out);
   }

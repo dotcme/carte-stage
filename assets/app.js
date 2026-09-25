@@ -794,8 +794,9 @@
     const cs = getComputedStyle(safeProbe);
     const h = window.innerHeight;
     const peek = parseFloat(cssVar('--sheet-peek')) || 156;
-    const full = h - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0) - 84;
-    return { peek, detail: Math.min(540, h - 200), full };
+    const bottom = parseFloat(cs.paddingBottom) || 0;
+    const full = h - (parseFloat(cs.paddingTop) || 0) - 76;
+    return { peek: peek + bottom, detail: Math.min(540, h - 200) + bottom, full };
   }
   function setSheet(mode) {
     document.body.dataset.sheet = mode;
