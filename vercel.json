@@ -1,0 +1,10 @@
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "carte-stage-wedq.vercel.app" }],
+      "destination": "https://stage.geodataparis.xyz/$1",
+      "permanent": true
+    }
+  ]
+}
