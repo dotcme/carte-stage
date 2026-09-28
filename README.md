@@ -23,7 +23,16 @@ Le site est statique. Il doit être servi en HTTP pour pouvoir charger `data/sta
 python3 -m http.server 8000
 ```
 
-puis ouvrir <http://localhost:8000>. Il peut aussi être publié tel quel avec GitHub Pages.
+puis ouvrir <http://localhost:8000>.
+
+## Mise en ligne
+
+Le site est publié par GitHub Pages depuis la racine de la branche `main`, à l'adresse <https://stage.geodataparis.xyz>. Chaque push sur `main` le met à jour en une minute environ.
+
+- `CNAME` donne le domaine à GitHub Pages ; l'adresse `dotcme.github.io/carte-stage` y redirige.
+- `.nojekyll` fait publier les fichiers tels quels, sans passer par Jekyll.
+- Chez l'hébergeur du domaine, `stage` est un enregistrement CNAME vers `dotcme.github.io`.
+- `vercel.json` redirige l'ancienne adresse `carte-stage-wedq.vercel.app` vers le nouveau domaine, tant que le projet Vercel existe.
 
 ## Mettre à jour les données
 
@@ -66,7 +75,7 @@ Avant chaque commit qui modifie `assets/style.css`, `assets/basemap.js` ou `asse
 node scripts/version.mjs
 ```
 
-Le script ajoute à ces fichiers, dans `index.html`, une empreinte de leur contenu (`assets/app.js?v=ec151dcf`, par exemple). Quand un fichier change, son adresse change aussi, et les navigateurs chargent la nouvelle version au lieu de garder l'ancienne en cache. Les données, elles, sont revérifiées auprès du serveur à chaque visite : il n'y a rien à faire après une mise à jour de `data/stages.json`.
+Le script ajoute à ces fichiers, dans `index.html`, une empreinte de leur contenu (`assets/app.js?v=ec151dcf`, par exemple). Quand un fichier change, son adresse change aussi, et les navigateurs chargent la nouvelle version au lieu de garder l'ancienne en cache. Les données, elles, sont revérifiées auprès du serveur à chaque visite : il n'y a rien à faire après une mise à jour de `data/stages.json`. GitHub Pages laisse les navigateurs garder la page elle-même dix minutes : une modification peut mettre ce temps à apparaître pour qui a déjà ouvert la carte.
 
 ## Fichiers
 
@@ -80,3 +89,4 @@ Le script ajoute à ces fichiers, dans `index.html`, une empreinte de leur conte
 - `data/tags.json` : les tags attribués par le modèle, avec une empreinte du sujet et de la structure de chaque stage.
 - `scripts/tag_with_mistral.py` : attribue les tags avec un modèle Mistral (documenté dans `scripts/README_tagging.md`).
 - `scripts/version.mjs` : met à jour l'empreinte des fichiers du site dans `index.html`.
+- `CNAME`, `.nojekyll`, `vercel.json` : la mise en ligne (voir plus haut).
