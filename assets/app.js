@@ -13,6 +13,8 @@
     public: { label: 'Service public', long: 'Service public ou collectivité' }
   };
   const TYPES = { Pluri: 'Stage pluridisciplinaire', TFE: 'Travail de fin d’études' };
+  // Parcours factice des stages de 3e année dont le parcours n'est pas renseigné : visible dans les filtres, jamais dans les données.
+  const PARCOURS_NON_SPECIFIE = 'non-specifie';
   // Tags des stages (attribués par scripts/tag_with_mistral.py, mêmes clés) : 15 techniques/méthodes et 17 domaines d’application.
   const TAGS = {
     techniques: {
@@ -298,7 +300,10 @@
       const choice = lieuChoice(state.lieu);
       if (choice ? !choice.test(s) : s.pays !== state.lieu) return false;
     }
-    if (!sk.includes('parcours') && s.parcours && !state.parcours.has(s.parcours)) return false;
+    if (!sk.includes('parcours')) {
+      const p = s.parcours || (s.cycle === 'ing3' ? PARCOURS_NON_SPECIFIE : null);
+      if (p && !state.parcours.has(p)) return false;
+    }
     if (!sk.includes('tags') && state.tags.size && !s.tags.some((t) => state.tags.has(t))) return false;
     if (state.q) {
       const words = norm(state.q).split(/\s+/).filter(Boolean);
@@ -321,19 +326,21 @@
   // Depuis « Tous », toucher un parcours ne garde que lui ; les touchers suivants en ajoutent ou en retirent,
   // et retirer le dernier revient à tous.
   const allParcours = () => state.parcours.size === PARCOURS.length;
+  const parcoursLabel = (v) => (v === PARCOURS_NON_SPECIFIE ? 'Parcours non spécifié' : v);
+  const parcoursSelectable = () => state.cycles.has('ing3'); // les parcours ne filtrent que la 3e année : inutiles sans elle
   function pickParcours(v) {
+    if (!parcoursSelectable()) return;
     if (v === 'all') state.parcours = new Set(PARCOURS);
     else if (allParcours()) state.parcours = new Set([v]);
     else {
       if (state.parcours.has(v)) state.parcours.delete(v); else state.parcours.add(v);
       if (!state.parcours.size) state.parcours = new Set(PARCOURS);
     }
-    state.cycles.add('ing3'); // sinon le parcours choisi resterait masqué
   }
   function parcoursSummary() {
     if (allParcours()) return null;
     if (!state.parcours.size) return 'Aucun parcours';
-    return state.parcours.size === 1 ? [...state.parcours][0] : `${state.parcours.size} parcours`;
+    return state.parcours.size === 1 ? parcoursLabel([...state.parcours][0]) : `${state.parcours.size} parcours`;
   }
 
   /* ---------- Rendu des contrôles ---------- */
@@ -348,7 +355,7 @@
     // Choix multiple : le menu reste ouvert pendant qu'on coche.
     parcours: {
       name: 'Parcours', heading: 'Parcours de 3e année', multi: true, options: () => PARCOURS,
-      label: (v) => (v === 'all' ? 'Tous les parcours' : v),
+      label: (v) => (v === 'all' ? 'Tous les parcours' : parcoursLabel(v)),
       count: (v) => parcoursCounts[v] || 0,
       selected: (v) => (v === 'all' ? allParcours() : !allParcours() && state.parcours.has(v)),
       summary: parcoursSummary,
@@ -388,7 +395,8 @@
     STAGES.forEach((s) => {
       if (matches(s, 'cycle')) cycleCounts[s.cycle] = (cycleCounts[s.cycle] || 0) + 1;
       if (matches(s, 'structure')) structCounts[s.structure] = (structCounts[s.structure] || 0) + 1;
-      if (s.parcours && matches(s, 'cycle+parcours')) parcoursCounts[s.parcours] = (parcoursCounts[s.parcours] || 0) + 1;
+      const sp = s.parcours || (s.cycle === 'ing3' ? PARCOURS_NON_SPECIFIE : null);
+      if (sp && matches(s, 'cycle+parcours')) parcoursCounts[sp] = (parcoursCounts[sp] || 0) + 1;
       // Les comptes du menu Lieu ignorent le filtre de lieu : c'est ce qu'on obtiendra en le choisissant.
       if (matches(s, 'lieu')) {
         countryCounts[s.pays] = (countryCounts[s.pays] || 0) + 1;
@@ -415,8 +423,8 @@
         ${svg('chevron', ICONS.chevronRight)}
       </button>
       ${parcoursOpen ? `<div class="subrows" role="group" aria-label="Parcours">${PARCOURS.map((p) => `
-        <button type="button" class="row row-sub" data-parcours="${esc(p)}" aria-pressed="${state.parcours.has(p)}">
-          <span class="row-label">${esc(p)}</span>
+        <button type="button" class="row row-sub" data-parcours="${esc(p)}" aria-pressed="${state.parcours.has(p)}"${parcoursSelectable() ? '' : ' disabled'}>
+          <span class="row-label">${esc(parcoursLabel(p))}</span>
           <span class="row-count">${fmt(parcoursCounts[p] || 0)}</span>
           ${CHECK}
         </button>`).join('')}</div>` : ''}`;
@@ -443,11 +451,11 @@
     });
 
     // Mobile : filtres rapides dans la feuille (année, cycles, parcours de 3e année, lieu), les mêmes que sur ordinateur.
-    const quickMenu = (key) => {
+    const quickMenu = (key, disabled) => {
       const m = MENUS[key];
       const value = m.summary ? m.summary() : state[key] !== 'all' ? m.label(state[key]) : null;
       return `
-        <button type="button" class="chip${value ? ' is-set' : ''}" data-menu="${key}" aria-haspopup="listbox" aria-expanded="false" aria-label="${m.heading || m.name} : ${esc(value || m.label('all'))}">
+        <button type="button" class="chip${value ? ' is-set' : ''}" data-menu="${key}" aria-haspopup="listbox" aria-expanded="false" aria-label="${m.heading || m.name} : ${esc(value || m.label('all'))}"${disabled ? ' disabled' : ''}>
           <span>${esc(value || m.name)}</span>${svg('chevron', ICONS.chevronDown)}
         </button>`;
     };
@@ -456,7 +464,7 @@
         <span class="dot"></span>${CYCLES[k].short}
       </button>`;
     // La capsule des parcours suit celle de la 3e année, dont elle affine le filtre.
-    const quickCycles = Object.keys(CYCLES).map((k) => quickCycle(k) + (k === 'ing3' && PARCOURS.length ? quickMenu('parcours') : '')).join('');
+    const quickCycles = Object.keys(CYCLES).map((k) => quickCycle(k) + (k === 'ing3' && PARCOURS.length ? quickMenu('parcours', !parcoursSelectable()) : '')).join('');
     $$('[data-quick-filters]').forEach((el) => {
       const scroll = el.scrollLeft;
       el.innerHTML = quickMenu('annee') + quickCycles + quickMenu('lieu');
@@ -469,6 +477,9 @@
       el.closest('.select-row').classList.toggle('is-set', state[k] !== 'all');
     });
     $$('[data-search]').forEach((input) => { if (input.value !== state.q) input.value = state.q; });
+
+    // « Tout désélectionner » (Cycle) : masqué quand tous les cycles sont déjà décochés.
+    $$('[data-action="clear-cycles"]').forEach((b) => { b.hidden = !state.cycles.size; });
 
     const changed = changedCount();
     const badge = $('[data-filter-badge]');
@@ -1095,9 +1106,9 @@
       return update();
     }
     if (t.dataset.parcours !== undefined) {
+      if (!parcoursSelectable()) return; // lignes grisées : la sélection en mémoire attend que la 3e année soit cochée
       const k = t.dataset.parcours;
-      if (state.parcours.has(k)) state.parcours.delete(k);
-      else { state.parcours.add(k); state.cycles.add('ing3'); } // sinon le parcours coché resterait masqué
+      if (state.parcours.has(k)) state.parcours.delete(k); else state.parcours.add(k);
       return update();
     }
     if (t.dataset.tag !== undefined) {
@@ -1128,6 +1139,7 @@
     }
 
     switch (t.dataset.action) {
+      case 'clear-cycles': state.cycles.clear(); return update();
       case 'reset':
         state.annee = 'all';
         state.cycles = new Set(DEFAULTS.cycles);
@@ -1253,6 +1265,8 @@
         const diff = activeParcours.has(b) - activeParcours.has(a);
         return diff || a.localeCompare(b, 'fr');
       });
+      // En fin de liste : les stages de 3e année sans parcours, filtrables comme un parcours.
+      if (STAGES.some((s) => s.cycle === 'ing3' && !s.parcours)) PARCOURS.push(PARCOURS_NON_SPECIFIE);
       // La France est dans les choix du haut du menu (France hexagonale) ; les autres pays suivent par ordre alphabétique.
       COUNTRIES = [...new Set(STAGES.map((s) => s.pays))].filter((pays) => pays && pays !== 'France').sort((a, b) => a.localeCompare(b, 'fr'));
       if (YEARS.length) $('[data-subtitle]').textContent = `Géodata Paris · ${YEARS[YEARS.length - 1]} à ${YEARS[0]}`;

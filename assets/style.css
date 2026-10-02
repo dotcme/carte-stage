@@ -265,6 +265,9 @@ a { color: var(--accent); }
 
 .section { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 .section h2 { padding: 0 4px; font-size: 0.9375rem; line-height: 1.25rem; font-weight: 600; }
+/* Titre de section et action opposée (« Tout désélectionner ») sur la même ligne */
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.section-head .plain { min-height: 32px; font-size: 0.875rem; }
 /* Les filtres défilent s'ils ne tiennent pas ; le fondu montre qu'il y en a d'autres. */
 .filters {
   display: flex; flex-direction: column; gap: 20px;
@@ -318,6 +321,8 @@ a { color: var(--accent); }
 .subrows .row { min-height: 44px; padding-left: 46px; font-size: 0.9375rem; }
 .subrows .row + .row::before { left: 46px; }
 .subrows .row .check { width: 18px; height: 18px; }
+/* Parcours grisés quand « Ingénieur 3e année » est décoché : la sélection cochée reste visible, en mémoire */
+.row:disabled { opacity: 0.45; cursor: default; }
 
 .select-row {
   display: flex; align-items: center; gap: 12px; width: 100%;
@@ -570,7 +575,7 @@ a { color: var(--accent); }
   .prominent:hover { filter: brightness(1.08); }
   .round-button:hover .icon, .close:hover .icon { background: var(--fill-pressed); }
   .tag-chip:hover { border-color: var(--control-edge); }
-  .row:hover { background: var(--fill-pressed); }
+  .row:not(:disabled):hover { background: var(--fill-pressed); }
   .select-row:hover { background-image: linear-gradient(var(--fill-pressed), var(--fill-pressed)); }
   .menu-item:hover { background: var(--glass-lens); }
   .item:not([aria-current="true"]):hover { background: var(--fill-pressed); }
@@ -664,6 +669,7 @@ a { color: var(--accent); }
   .chip[data-cycle][aria-pressed="false"] { background: transparent; color: var(--label-secondary); }
   .chip[data-cycle][aria-pressed="false"] .dot { background: transparent; }
   .chip[data-cycle][aria-pressed="true"] { font-weight: 600; }
+  .chip:disabled { opacity: 0.45; cursor: default; }
 
   /* La liste reste en page (masquée) quand la feuille est repliée : elle est déjà prête quand on tire la feuille. */
   .list { min-height: 0; transition: opacity 280ms var(--ease-out), visibility 0s; }
