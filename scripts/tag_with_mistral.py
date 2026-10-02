@@ -2,9 +2,9 @@
 """Attribue les tags des stages avec un modèle Mistral : c'est la seule source des tags.
 
 Chaque stage (sujet + structure) est soumis au modèle, qui choisit ses tags dans le
-vocabulaire ci-dessous. Les réponses sont gardées dans data/tags.json, avec une empreinte
-du sujet et de la structure : seuls les stages nouveaux ou modifiés sont soumis au
-lancement suivant, et scripts/build-data.mjs reprend les tags de ce fichier.
+vocabulaire ci-dessous. Les tags sont écrits dans data/stages.json, l'unique fichier de
+données : seuls les stages sans tags — les nouveaux et ceux modifiés depuis la dernière
+reconstruction, qui leur retire leurs tags — sont soumis au lancement suivant.
 
 Deux moteurs gratuits :
   - l'API Mistral, avec l'offre gratuite « Experiment » (clé MISTRAL_API_KEY, dans l'environnement ou .env) ;
@@ -15,7 +15,7 @@ Utilisation :
   python3 scripts/tag_with_mistral.py --moteur ollama     # modèle local (ollama pull mistral-nemo)
   python3 scripts/tag_with_mistral.py --essai --limite 20 # affiche sans rien écrire
   python3 scripts/tag_with_mistral.py --tout              # retagge tous les stages
-  python3 scripts/tag_with_mistral.py --ids 2024-1234,2025-ajout-01
+  python3 scripts/tag_with_mistral.py --ids 2024-ing3-001,2025-ing2-015
 
 Aucune dépendance : la bibliothèque standard de Python 3.9+ suffit.
 """
@@ -33,7 +33,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 STAGES_FILE = ROOT / "data" / "stages.json"
-CACHE_FILE = ROOT / "data" / "tags.json"
 
 # Variables lues dans .env (ignoré par git), par exemple MISTRAL_API_KEY=… ; l'environnement l'emporte.
 try:
@@ -128,12 +127,6 @@ Réponds uniquement par un objet JSON de la forme {{"resultats": [{{"n": 1, "tag
 
 # Empreinte du vocabulaire et des consignes : si elle change, tous les stages sont retaggés.
 VERSION = hashlib.sha1(SYSTEME.encode("utf-8")).hexdigest()[:12]
-
-
-def empreinte(stage):
-    """Même calcul que dans scripts/build-data.mjs."""
-    texte = f"{stage.get('sujet') or ''}\n{stage.get('org') or ''}"
-    return hashlib.sha1(texte.encode("utf-8")).hexdigest()[:12]
 
 
 def message_lot(lot):
@@ -250,36 +243,25 @@ def lire_json(chemin, defaut):
         return defaut
 
 
-def ecrire_json(chemin, data, compact):
+def ecrire_json(chemin, data):
     tmp = chemin.with_suffix(".tmp")
-    if compact:
-        texte = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-    else:
-        texte = json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
+    texte = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     tmp.write_text(texte, encoding="utf-8")
     tmp.replace(chemin)
 
 
-def a_jour(cache, stage):
-    e = cache["stages"].get(stage["id"])
-    return bool(e) and e.get("empreinte") == empreinte(stage) and cache.get("version") == VERSION
+def a_jour(data, stage):
+    """Le stage porte des tags attribués avec le vocabulaire actuel."""
+    return data.get("tags_version") == VERSION and bool(stage.get("tags"))
 
 
-def appliquer(stages, cache):
-    """Recopie dans les stages les tags du cache ; un stage sans tags à jour n'en a aucun."""
-    for s in stages:
-        s["tags"] = cache["stages"][s["id"]]["tags"] if a_jour(cache, s) else []
-
-
-def statistiques(stages, cache):
+def statistiques(stages, data):
     compte = {}
     for s in stages:
         for t in s["tags"]:
             compte[t] = compte.get(t, 0) + 1
-    restants = sum(not a_jour(cache, s) for s in stages)
-    vides = sum(not s["tags"] and a_jour(cache, s) for s in stages)
-    print(f"\n{len(stages)} stages : {len(stages) - restants} taggés par le modèle "
-          f"(dont {vides} sans tag), {restants} à traiter")
+    restants = sum(not a_jour(data, s) for s in stages)
+    print(f"\n{len(stages)} stages : {len(stages) - restants} taggés par le modèle, {restants} à traiter")
     for t in TAGS:
         print(f"{compte.get(t, 0):5}  {t}")
 
@@ -318,9 +300,14 @@ def main():
     if data is None:
         sys.exit(f"{STAGES_FILE} introuvable : lancer d'abord node scripts/build-data.mjs")
     stages = data["stages"]
-    cache = lire_json(CACHE_FILE, {"version": VERSION, "stages": {}})
-    if cache.get("version") != VERSION and cache["stages"]:
-        print("Le vocabulaire ou les consignes ont changé : tous les stages seront retaggés.")
+    # Le vocabulaire ou les consignes ont changé : les tags de tous les stages sont effacés,
+    # si bien qu'un stage manqué pendant le retagging restera à traiter au prochain passage.
+    if data.get("tags_version") != VERSION:
+        if any(s.get("tags") for s in stages):
+            print("Le vocabulaire ou les consignes ont changé : tous les stages seront retaggés.")
+        for s in stages:
+            s["tags"] = []
+        data["tags_version"] = VERSION
 
     if args.ids:
         voulus = set(args.ids.split(","))
@@ -329,7 +316,7 @@ def main():
         if absents:
             sys.exit(f"Stages introuvables : {', '.join(sorted(absents))}")
     else:
-        a_faire = [s for s in stages if args.tout or not a_jour(cache, s)]
+        a_faire = [s for s in stages if args.tout or not a_jour(data, s)]
     if args.limite is not None:
         a_faire = a_faire[:args.limite]
 
@@ -341,9 +328,6 @@ def main():
     else:
         print(f"{len(a_faire)} stages à tagger avec {args.modele} ({args.moteur}), par lots de {args.lot}")
 
-    # Les stages déjà à jour gardent leurs tags si seule la version change en cours de route.
-    if cache.get("version") != VERSION:
-        cache = {"version": VERSION, "stages": {}}
     echecs = 0
     for debut in range(0, len(a_faire), args.lot):
         lot = a_faire[debut:debut + args.lot]
@@ -360,22 +344,17 @@ def main():
                 print(f"  {s['id']} : absent de la réponse, à refaire", file=sys.stderr)
                 continue
             print(f"  {s['id']:<16} {', '.join(tags) or '—':<45} {s['sujet'][:70]}")
-            cache["stages"][s["id"]] = {"empreinte": empreinte(s), "tags": tags}
+            s["tags"] = tags
         if not args.essai:  # enregistré après chaque lot : un arrêt ne perd rien
-            ecrire_json(CACHE_FILE, cache, compact=False)
+            ecrire_json(STAGES_FILE, data)
         if args.pause and debut + args.lot < len(a_faire):
             time.sleep(args.pause)
 
-    # Oublie les stages qui ont disparu des données.
-    ids = {s["id"] for s in stages}
-    cache["stages"] = {k: v for k, v in cache["stages"].items() if k in ids}
-    appliquer(stages, cache)
     if args.essai:
         print("\nEssai : rien n'a été écrit.")
     else:
-        ecrire_json(CACHE_FILE, cache, compact=False)
-        ecrire_json(STAGES_FILE, data, compact=True)
-    statistiques(stages, cache)
+        ecrire_json(STAGES_FILE, data)
+    statistiques(stages, data)
     if echecs:
         print(f"\n{echecs} stages n'ont pas pu être taggés : relancer le script pour les reprendre.")
         sys.exit(1)

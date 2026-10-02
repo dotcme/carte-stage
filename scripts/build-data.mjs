@@ -1,14 +1,21 @@
-// Récupère la carte « Carte des stages » publiée sur macarte.ign.fr et produit data/stages.json.
+// Récupère la carte « Carte des stages » publiée sur macarte.ign.fr et réécrit data/stages.json,
+// l'unique fichier de données : les stages (avec leurs tags) et la version du vocabulaire des tags
+// (scripts/tag_with_mistral.py). Les ids « année-cycle-numéro » sont séquentiels : ils changent dès
+// qu'un stage est ajouté ou retiré, c'est pourquoi les stages reconstruits sont rapprochés du fichier
+// précédent par leur contenu, qui ne change pas.
 // Usage : node scripts/build-data.mjs [fichier.json]
 // Sans argument, le fichier est téléchargé depuis l'API publique de macarte.
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const MAP_ID = 'R3wixb';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const OUT = path.join(ROOT, 'data', 'stages.json');
+
+// Le fichier déjà présent, s'il existe : il porte les stages tenus à la main et les tags déjà attribués.
+let PRECEDENT = null;
+try { PRECEDENT = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch {}
 
 async function load() {
   if (process.argv[2]) return JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
@@ -61,15 +68,16 @@ function country(raw) {
 
 // Classement des structures d'accueil (le type n'existe pas dans les données d'origine : il est déduit du nom).
 // Les règles sont lues dans l'ordre ; la première qui correspond l'emporte.
-// Pour corriger un cas particulier, ajoutez le nom exact dans data/structures-corrections.json.
+// Pour corriger un cas particulier, ajoutez le nom exact dans la section « corrections » de data/stages.json.
 const COMPANY = /engie|orange lab|spie batignolles|\bsncf\b(?! ?r[ée]seau)|\bedf\b|ign ?fi\b|ardanti|m[ée]tropole t[ée]l[ée]vision|thal[eè]s/i;
 const IGN = /\bign\b|institute? nationa\w* de l.information g[ée]ograph|institut g[ée]ographique national|information g[ée]ograph\w* et forest/i;
 const LABO = /laborato|\bdlr\b|cirad|ifp energies|univert|\blab\b|research|recherche|universit|univ\.|univers|\bcnrs\b|\bumr|\bums\b|inrae|\birstea\b|\bird\b|\binria\b|\bonera\b|\bbrgm\b|ifremer|\bcnes\b|centre national d.[ée]tudes spatiales|\besa\b|\bcea\b|commissariat [àa] l.[ée]nergie atomique|lastig|fondazion|foundation|kessler|nersc|nansen|ifsttar|iffstar|\bjrc\b|\bgfz|cesbio|cerege|ricerche|zrc.sazu|\bnioz\b|icrisat|\birsn\b|facult|school|[ée]cole|college|hochschule|caltech|taipei tech|agroparistech|supagro|conservatoire national des arts|\buppa\b|gembloux|heig-vd|ensta|polytech|technische|tu wien|g[ée]osciences rennes|espace-dev|\bispa\b|identit[ée] et diff[ée]renciation|environnement, ville et soci[ée]t[ée]|geoecomar|center for (spatial|geospatial)|centre d.[ée]tudes|irt aese|cra wallonie|mus[ée]e royal|observato|institut pasteur|curie|\bmnhn\b|museum|\bephe\b|\bipgp\b|isterre|g[ée]oazur|mines paris|^ensg$/i;
 const PUBLIC = /cerema|espaces verts|minist[èe]re|mairie|ville d|m[ée]tropole|conseil (d[ée]partemental|r[ée]gional|g[ée]n[ée]ral)|d[ée]partement (de la|des|du|d.) |r[ée]gion |\bddt|\bdreal\b|\bdeal\b|direction (d[ée]partementale|r[ée]gionale|de l.environnement|des (affaires|services)|de l.alimentation|du renseignement)|agglom|communaut[ée]|\bsdis\b|parc (national|naturel|amazonien)|office national|office (de l.eau|fran[çc]ais de la biodiversit)|\bonf|\bofb\b|agence (de l.eau|d.urbanisme|nationale|r[ée]gionale|alpine|de l.environnement)|\bapur\b|\baudiar\b|\binsee\b|s?ncf r[ée]seau|scncf|y?ndicat mixte|syndicat|collectivit|arm[ée]es?\b|\bdgac?\b|service (public|r[ée]gional|de l.[ée]tat|hydrographique)|\bspf\b|cadastre|land survey|national land|kartverket|ordnance survey|swisstopo|cartogr[àa]fic|cartographique et g[ée]ologique|\bcommune\b|comune di|municipal|government|gouvernement|\bshom\b|institution patrimoniale|pr[ée]f[ée]cture|voies? navigables|sant[ée] publique france|bureau d.enqu[êe]tes|\barcep\b|autorit[ée] de r[ée]gulation|\binrap\b|ch[âa]teau de versailles|archives nationales|bundesamt|landesamt|maa-amet|nations unies|pompiers|affaires fonci[èe]res|administration de la nature|grand lyon|chambre d.agriculture|gistda|eau de paris|province sud|[ée]tablissement public territorial|\beptb\b|geological survey|\bdnum\b|ciren|vall[ée]e du haut anjou|service de l.informatique|\bdaaf\b|m[ée]t[ée]o|gendarmerie|\bsra\b/i;
 const INSTITUTE = /institut|institute|academ|centre de recherche/i;
 
-let CORRECTIONS = {};
-try { CORRECTIONS = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'structures-corrections.json'), 'utf8')); } catch {}
+// Structures mal classées par les règles ci-dessus, corrigées à la main : le nom exact et la bonne
+// classe. Elles sont déjà appliquées dans data/stages.json, mais nécessaires à chaque reconstruction.
+const CORRECTIONS = { 'Institut Scientifique de Service Public (ISSeP)': 'labo', 'Direction Scientifique MA': 'entreprise' };
 
 function structure(name) {
   if (CORRECTIONS[name]) return CORRECTIONS[name];
@@ -108,7 +116,7 @@ features.forEach((f, i) => {
   const detail = clean(p['Cycle_détail']).toUpperCase().replace(/\s+/g, '');
   const annee = academicYear(p.Annee);
   stages.push({
-    id: `${annee.slice(0, 4)}-${p.idStage}`, // idStage seul n'est pas unique d'une année à l'autre
+    id: null, // attribué plus bas, après le tri : « année-cycle-numéro », séquentiel
     annee,
     cycle,
     type: clean(p.TypeStage) || null,
@@ -124,26 +132,41 @@ features.forEach((f, i) => {
   });
 });
 
-// Stages ajoutés à la main, absents de la carte d'origine : ils survivent à chaque reconstruction.
-let AJOUTS = [];
-try { AJOUTS = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'stages-ajouts.json'), 'utf8')); } catch {}
-AJOUTS.forEach((s) => stages.push({ ...s, structure: s.structure || structure(s.org), tags: [] }));
+// Le fichier précédent, indexé par le contenu d'un stage : les ids, séquentiels, changent dès qu'un
+// stage est ajouté ou retiré ; le contenu, lui, permet de retrouver ses tags.
+const cle = (s) => `${s.annee}\n${s.cycle}\n${s.org}\n${s.sujet || ''}`;
+const anciens = new Map(PRECEDENT ? PRECEDENT.stages.map((s) => [cle(s), s]) : []);
 
-// Tags attribués par le modèle (python3 scripts/tag_with_mistral.py), gardés dans data/tags.json.
-// Un stage nouveau ou dont le sujet ou la structure a changé reste sans tag jusqu'au prochain passage.
-const empreinte = (s) => crypto.createHash('sha1').update(`${s.sujet || ''}\n${s.org || ''}`).digest('hex').slice(0, 12);
-let TAGS_CACHE = { stages: {} };
-try { TAGS_CACHE = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'tags.json'), 'utf8')); } catch {}
+// Tags attribués par le modèle (python3 scripts/tag_with_mistral.py) : repris tels quels quand la
+// reconstruction retrouve le stage. Un stage nouveau ou dont le texte a changé reste sans tags
+// jusqu'au prochain passage du script.
 let aTagger = 0;
 stages.forEach((s) => {
-  const e = TAGS_CACHE.stages[s.id];
-  if (e && e.empreinte === empreinte(s)) s.tags = e.tags;
+  const a = anciens.get(cle(s));
+  if (a) { s.tags = a.tags; anciens.delete(cle(s)); }
   else aTagger++;
 });
 
+// Stages du fichier précédent que la reconstruction ne retrouve pas : tenus à la main, ils survivent.
+// Un stage retiré de macarte y reste aussi : supprimez-le à la main si son retrait est voulu.
+anciens.forEach((s) => stages.push({ ...s, structure: s.structure || structure(s.org) }));
+
+// Ids « année-cycle-numéro », séquentiels par année et cycle dans l'ordre du fichier, après le tri.
 stages.sort((a, b) => b.annee.localeCompare(a.annee) || a.org.localeCompare(b.org, 'fr'));
+const numeros = {};
+stages.forEach((s) => {
+  const k = `${s.annee}-${s.cycle}`;
+  numeros[k] = (numeros[k] || 0) + 1;
+  s.id = `${s.annee.slice(0, 4)}-${s.cycle}-${String(numeros[k]).padStart(3, '0')}`;
+});
+
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
-fs.writeFileSync(OUT, JSON.stringify({ source: `https://macarte.ign.fr/carte/${MAP_ID}`, generated: new Date().toISOString().slice(0, 10), stages }));
+fs.writeFileSync(OUT, JSON.stringify({
+  source: `https://macarte.ign.fr/carte/${MAP_ID}`,
+  generated: new Date().toISOString().slice(0, 10),
+  tags_version: (PRECEDENT && PRECEDENT.tags_version) || null, // empreinte du vocabulaire des consignes
+  stages
+}));
 
 const count = (key) => stages.reduce((acc, s) => ((acc[s[key]] = (acc[s[key]] || 0) + 1), acc), {});
 console.log(`${stages.length} stages écrits dans ${path.relative(ROOT, OUT)}`);

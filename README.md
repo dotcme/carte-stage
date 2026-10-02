@@ -48,11 +48,14 @@ Au passage, il :
 - n’exporte pas les noms des étudiantes et étudiants ;
 - harmonise les noms de pays et corrige les accents et apostrophes abîmés ;
 - déduit le type de structure du nom de l'organisme, qui n'est pas renseigné dans la source ;
-- reprend les tags de chaque stage dans `data/tags.json` (voir ci-dessous).
+- reprend les tags des stages qu'il retrouve à l'identique (même année, cycle, structure et sujet) ;
+- numérote chaque stage « année-cycle-numéro », séquentiel par année et cycle dans l'ordre du fichier.
 
-Les stages absents de macarte (ceux de 2025-2026, par exemple) sont saisis à la main dans `data/stages-ajouts.json`, au même format que `data/stages.json`, sans les tags. Le script les ajoute à chaque reconstruction.
+Les ids changent donc dès qu'un stage est ajouté ou retiré : un lien partagé qui pointe vers un stage peut se briser à la mise à jour suivante.
 
-Ce classement automatique peut se tromper. Pour corriger une structure, ajoutez son nom exact dans `data/structures-corrections.json` avec `labo`, `entreprise` ou `public`, puis relancez le script.
+Les stages absents de macarte (ceux de 2025-2026, par exemple) sont saisis à la main dans `data/stages.json`, au format des autres, sans id ni `tags`. La reconstruction les reconnaît à leur contenu, leur attribue un id et les conserve ; le taggeur leur attribue leurs tags. Un stage disparu de macarte y reste aussi : supprimez-le à la main si son retrait est voulu.
+
+Ce classement automatique peut se tromper. Pour corriger une structure, ajoutez son nom exact à `CORRECTIONS`, en tête de `scripts/build-data.mjs` (comme `COUNTRY_FIX` pour les pays), avec `labo`, `entreprise` ou `public`, puis relancez le script.
 
 ## Attribuer les tags
 
@@ -63,7 +66,7 @@ echo 'MISTRAL_API_KEY=…' > .env   # clé gratuite de l'offre « Experiment » 
 python3 scripts/tag_with_mistral.py
 ```
 
-Le script (Python 3.9 ou plus récent, sans dépendance) ne soumet que les stages nouveaux ou dont le sujet ou la structure a changé. Il garde les réponses dans `data/tags.json` et écrit les tags dans `data/stages.json`. Il faut donc le lancer après chaque `node scripts/build-data.mjs` qui annonce des stages sans tags à jour. On peut aussi utiliser un modèle local, sans compte, avec [Ollama](https://ollama.com) : `ollama pull mistral-nemo`, puis `python3 scripts/tag_with_mistral.py --moteur ollama`. Voir `scripts/README_tagging.md`.
+Le script (Python 3.9 ou plus récent, sans dépendance) ne soumet que les stages sans tags : les nouveaux et ceux dont le sujet ou la structure a changé, à qui la reconstruction a retiré les leurs. Il écrit les tags de chaque stage dans `data/stages.json` et y note la version de son vocabulaire (`tags_version`) : si le vocabulaire ou les consignes changent, tous les stages sont retaggés au lancement suivant. Il faut donc le lancer après chaque `node scripts/build-data.mjs` qui annonce des stages sans tags à jour. On peut aussi utiliser un modèle local, sans compte, avec [Ollama](https://ollama.com) : `ollama pull mistral-nemo`, puis `python3 scripts/tag_with_mistral.py --moteur ollama`. Voir `scripts/README_tagging.md`.
 
 Le vocabulaire (32 tags, chacun avec une description qui guide le modèle) est dans le script ; les libellés affichés sont dans `assets/app.js`. Modifier le vocabulaire ou les consignes fait retagger tous les stages au lancement suivant.
 
@@ -83,10 +86,8 @@ Le script ajoute à ces fichiers, dans `index.html`, une empreinte de leur conte
 - `assets/basemap.js` : le style du plan clair (tuiles vectorielles OpenFreeMap, données OpenStreetMap).
 - `favicon.ico`, `assets/favicon.svg`, `assets/apple-touch-icon.png` : l’icône du site, une carte pliée aux couleurs du logo.
 - `assets/banner.png` : la bannière de partage (1200 × 630).
-- `data/stages.json` : les stages, produits par le script.
-- `data/stages-ajouts.json` : les stages ajoutés à la main, repris par le script.
+- `data/stages.json` : toutes les données — les stages, avec leurs ids séquentiels « année-cycle-numéro » et leurs tags, et la version du vocabulaire des tags. Produit par `scripts/build-data.mjs`, complété par `scripts/tag_with_mistral.py`.
 - `scripts/build-data.mjs` : récupération et nettoyage des données.
-- `data/tags.json` : les tags attribués par le modèle, avec une empreinte du sujet et de la structure de chaque stage.
 - `scripts/tag_with_mistral.py` : attribue les tags avec un modèle Mistral (documenté dans `scripts/README_tagging.md`).
 - `scripts/version.mjs` : met à jour l'empreinte des fichiers du site dans `index.html`.
 - `CNAME`, `.nojekyll`, `vercel.json` : la mise en ligne (voir plus haut).

@@ -30,13 +30,13 @@ Sur une machine modeste, `--modele mistral` (7 milliards de paramètres, environ
 
 ## Ce que fait le script
 
-1. Il lit `data/stages.json` et `data/tags.json`, le fichier des réponses déjà obtenues.
-2. Il retient les stages à tagger : ceux qui sont absents de `data/tags.json`, et ceux dont le sujet ou la structure a changé depuis. Chaque réponse est gardée avec une empreinte de ce texte.
+1. Il lit `data/stages.json`, l'unique fichier de données.
+2. Il retient les stages à tagger : ceux sans tags — les nouveaux et ceux dont le sujet ou la structure a changé depuis la dernière reconstruction, à qui elle a retiré les leurs. La version du vocabulaire est notée en tête du fichier (`tags_version`).
 3. Il envoie ces stages par lots. Les consignes contiennent le vocabulaire, une description de chaque tag, les règles d'attribution et quelques exemples. Le modèle répond en JSON (`{"resultats": [{"n": 1, "tags": [...]}]}`), avec une température à 0 pour que les réponses soient reproductibles.
 4. Il contrôle chaque réponse. Seules les clés exactes du vocabulaire sont retenues : les majuscules, les accents et les guillemets sont tolérés, et les autres tags sont écartés et signalés. Un stage qui manque dans la réponse, ou un lot en erreur, est laissé de côté et repris au lancement suivant ; le script se termine alors avec le code 1.
-5. Il enregistre `data/tags.json` après chaque lot : un arrêt ne perd rien. À la fin, il écrit les tags dans `data/stages.json` et affiche combien de stages porte chaque tag.
+5. Il enregistre `data/stages.json` après chaque lot : un arrêt ne perd rien. À la fin, il affiche combien de stages porte chaque tag.
 
-`node scripts/build-data.mjs` reprend les tags de `data/tags.json`. Il laisse sans tag les stages nouveaux ou modifiés et indique combien il en reste à traiter.
+`node scripts/build-data.mjs` reprend les tags des stages qu'il retrouve à l'identique (même année, cycle, structure et sujet). Il laisse sans tags les stages nouveaux ou modifiés et indique combien il en reste à traiter.
 
 ## Options
 
@@ -59,4 +59,4 @@ Pour évaluer un modèle ou des consignes avant de tout relancer, commencez par 
 
 Le vocabulaire est défini dans `TECHNIQUES` et `DOMAINES`, en tête du script. Les clés doivent rester celles de `TAGS` dans `assets/app.js`, qui porte les libellés affichés sur le site : un nouveau tag s'ajoute aux deux endroits, puis on lance `node scripts/version.mjs`. Les descriptions guident le modèle : pour corriger une confusion fréquente, précisez la description concernée plutôt que d'ajouter une règle.
 
-Le texte des consignes a une empreinte, gardée dans `data/tags.json`. Toute modification du vocabulaire, des descriptions, des règles ou des exemples change cette empreinte, et le lancement suivant retagge alors tous les stages.
+Le texte des consignes a une empreinte, gardée dans `data/stages.json` (`tags_version`). Toute modification du vocabulaire, des descriptions, des règles ou des exemples change cette empreinte, et le lancement suivant retagge alors tous les stages.
